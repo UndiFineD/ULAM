@@ -406,7 +406,7 @@ namespace MFM {
     evalNodeProlog(0); //new current node eval frame pointer, t3897
 
     UlamValue rtnUVPtr = makeUlamValuePtr();
-    rtnUVPtr.setPtrTargetEffSelfType(effselfuti); //t41494
+    rtnUVPtr.setPtrTargetEffSelfType(effselfuti, m_state); //t41494
 
     Node::assignReturnValueToStack(rtnUVPtr);
 
@@ -437,7 +437,7 @@ namespace MFM {
     evalNodeProlog(0); //new current node eval frame pointer
 
     UlamValue rtnUVPtr = makeUlamValuePtr();
-    rtnUVPtr.setPtrTargetEffSelfType(effselfuti);
+    rtnUVPtr.setPtrTargetEffSelfType(effselfuti, m_state);
 
     Node::assignReturnValuePtrToStack(rtnUVPtr);
 

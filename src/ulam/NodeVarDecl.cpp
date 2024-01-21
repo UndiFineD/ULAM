@@ -626,7 +626,7 @@ namespace MFM {
 		m_state.statusUnknownTypeInThisClassResolver(vit);
 		vit = eit;
 	      }
-	    //switch block variable non-ref (t41581), including ALT_ARRAYITEM (t41656)
+	    //switch block variable non-ref (t41581); no longer including ALT_ARRAYITEM (t41656)
 	    if(m_state.isReference(vit))
 	      {
 		vit = m_state.getUlamTypeAsDeref(vit);
@@ -1398,13 +1398,19 @@ namespace MFM {
 	UlamValue selfuvp = m_state.m_currentSelfPtr;
 	UTI ttype = selfuvp.getPtrTargetType();
 	assert(m_state.okUTItoContinue(ttype));
+	assert(m_state.okUTItoContinue(selfuvp.getPtrTargetEffSelfType())); //new
 	return selfuvp;
       } //done
 
     assert(!m_varSymbol->isAutoLocal()); //nodevarref, not here! t41656
     assert(!m_varSymbol->isDataMember());
+    UTI nuti = getNodeType();
     //local variable on the stack; could be array ptr!
-    ptr = UlamValue::makePtr(m_varSymbol->getStackFrameSlotIndex(), STACK, getNodeType(), m_state.determinePackable(getNodeType()), m_state, 0, m_varSymbol->getId());
+    ptr = UlamValue::makePtr(m_varSymbol->getStackFrameSlotIndex(), STACK, nuti, m_state.determinePackable(nuti), m_state, 0, m_varSymbol->getId());
+
+    if(m_state.isAClass(nuti))
+      ptr.setPtrTargetEffSelfType(nuti, m_state); //array as scalar or nouti?
+
     return ptr;
   } //makeUlamValuePtr
 

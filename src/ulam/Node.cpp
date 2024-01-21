@@ -804,6 +804,8 @@ namespace MFM {
 
     //where to put the return value..'return' statement uses STACK
     UlamValue rtnPtr = UlamValue::makePtr(-slots, where, rtnUVtype, m_state.determinePackable(rtnUVtype), m_state);
+    rtnPtr.setPtrTargetEffSelfTypeFromAnotherUV(rtnUV, m_state); //t3172
+
     m_state.assignValue(rtnPtr, rtnUV);
   } //assignReturnValueToStack
 
@@ -816,6 +818,8 @@ namespace MFM {
       return;
 
     UlamValue rtnPtr = UlamValue::makePtr(-1, where, rtnUVtype, rtnUVptr.isTargetPacked(), m_state);
+
+    rtnPtr.setPtrTargetEffSelfTypeFromAnotherUV(rtnUVptr, m_state); //missing?
     m_state.assignValuePtr(rtnPtr, rtnUVptr);
   } //assignReturnValuePtrToStack
 
@@ -833,6 +837,8 @@ namespace MFM {
 
     //where to put the return value..'return' statement uses STACK (t41497, t41476)
     UlamValue rtnPtr = UlamValue::makePtr(-slots, STACK, rtnUVtype, m_state.determinePackable(rtnUVtype), m_state);
+
+    rtnPtr.setPtrTargetEffSelfTypeFromAnotherUV(rtnUV, m_state); //t41089, missing!
     m_state.assignValue(rtnPtr, rtnUV);
     return rtnPtr;
   } //assignAnonymousClassReturnValueToStack
@@ -1458,7 +1464,8 @@ namespace MFM {
     fp->write(".read();"); GCNL;
 
     //update uvpass
-    uvpass = UVPass::makePass(tmpVarNum2, vstor, vuti, m_state.determinePackable(vuti), m_state, 0, 0); //POS 0 justified (atom-based).
+    UTI derefvuti = m_state.getUlamTypeAsDeref(vuti); //t41660
+    uvpass = UVPass::makePass(tmpVarNum2, vstor, derefvuti, m_state.determinePackable(derefvuti), m_state, 0, 0); //POS 0 justified (atom-based).
     m_state.clearCurrentObjSymbolsForCodeGen();
   } //genCodeReadAutorefIntoATmpVar
 
@@ -2166,7 +2173,7 @@ namespace MFM {
     assert(!cos->isConstant());
 
     UTI scalarcosuti = m_state.getUlamTypeAsScalar(cosuti);
-    UTI scalarrefuti = m_state.getUlamTypeAsRef(scalarcosuti, ALT_ARRAYITEM); //t3147
+    UTI scalarrefuti = m_state.getUlamTypeAsRef(scalarcosuti, ALT_REF); //t3147,t3172 (was ALT_ARRAYITEM)
     UlamType * scalarrefut = m_state.getUlamTypeByIndex(scalarrefuti);
     ULAMCLASSTYPE cosclasstype = cosut->getUlamClassType();
 
@@ -2313,14 +2320,15 @@ namespace MFM {
 
     assert(!cosut->isScalar());
 
-    UTI scalarcosuti = m_state.getUlamTypeAsScalar(cosuti); //ALT_ARRAYITEM
-    UlamType * scalarcosut = m_state.getUlamTypeByIndex(scalarcosuti);
-    u32 itemlen = scalarcosut->getSizeofUlamType();
+    UTI scalarcosuti = m_state.getUlamTypeAsScalar(cosuti); //was ALT_ARRAYITEM
+    UTI cafscalarcosuti = m_state.getUlamTypeAsRef(scalarcosuti, ALT_CONSTREF); //t3881
+    UlamType * cafscalarcosut = m_state.getUlamTypeByIndex(cafscalarcosuti);
+    u32 itemlen = cafscalarcosut->getSizeofUlamType();
 
     m_state.indentUlamCode(fp); //non-const to update regnumber
-    fp->write(scalarcosut->getLocalStorageTypeAsString().c_str());
+    fp->write(cafscalarcosut->getLocalStorageTypeAsString().c_str());
     fp->write(" ");
-    fp->write(m_state.getTmpVarAsString(scalarcosuti, tmpVarNum2, TMPAUTOREF).c_str());
+    fp->write(m_state.getTmpVarAsString(cafscalarcosuti, tmpVarNum2, TMPAUTOREF).c_str());
     fp->write("("); // use constructor (not equals)
     fp->write(((SymbolConstantValue *) cos)->getCompleteConstantMangledName().c_str()); //constant
     fp->write(", ");
@@ -2329,7 +2337,7 @@ namespace MFM {
     fp->write_decimal_unsigned(itemlen); //no rel offset
     fp->write("u, uc);"); GCNL;
 
-    luvpass = UVPass::makePass(tmpVarNum2, TMPAUTOREF, scalarcosuti, m_state.determinePackable(scalarcosuti), m_state, pos, cos->getId()); //POS left-justified by default
+    luvpass = UVPass::makePass(tmpVarNum2, TMPAUTOREF, cafscalarcosuti, m_state.determinePackable(cafscalarcosuti), m_state, pos, cos->getId()); //POS left-justified by default
 
     m_state.clearCurrentObjSymbolsForCodeGen();
   } //genCodeConvertATmpVarIntoConstantAutoRef

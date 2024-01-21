@@ -1578,7 +1578,7 @@ namespace MFM {
 
     s32 bitsize = keyOfArg.getUlamKeyTypeSignatureBitSize();
     u32 nameid = keyOfArg.getUlamKeyTypeSignatureNameId();
-    UlamKeyTypeSignature baseKey(nameid, bitsize, NONARRAYSIZE, cuti, ALT_ARRAYITEM);  //default array size is NONARRAYSIZE, new reftype
+    UlamKeyTypeSignature baseKey(nameid, bitsize, NONARRAYSIZE, cuti, ALT_NOT);  //default array size, was NONARRAYSIZE, not new reftype //t41660,1
     ULAMCLASSTYPE classtype = ut->getUlamClassType();
     UTI buti = makeUlamType(baseKey, bUT, classtype); //could be a new one, oops.
 
@@ -1610,9 +1610,11 @@ namespace MFM {
 
   UTI CompilerState::getUlamTypeAsDeref(UTI utiArg)
   {
+    assert(okUTItoContinue(utiArg)); //t3172,t41449,t41450,1,2,3,5
+
     UlamType * ut = getUlamTypeByIndex(utiArg);
-    if(!ut->isReference())
-      return utiArg;
+
+    //if(!ut->isReference()) return utiArg; //hid Nouti,Hzy,Nav; set effSelf in uv for eval tests
 
     ULAMTYPE bUT = ut->getUlamTypeEnum();
     UlamKeyTypeSignature keyOfArg = ut->getUlamKeyTypeSignature();
@@ -1621,7 +1623,7 @@ namespace MFM {
     UTI classidx = keyOfArg.getUlamKeyTypeSignatureClassInstanceIdx();
 
     if((bUT == Class) && ut->isScalar())
-      return classidx; //scalar
+      return classidx; //scalar error/t3845
 
     UlamKeyTypeSignature baseKey(keyOfArg.m_typeNameId, bitsize, arraysize, classidx, ALT_NOT);    //default array size is zero
     ULAMCLASSTYPE classtype = ut->getUlamClassType();
@@ -3028,15 +3030,11 @@ namespace MFM {
   {
     if(!isScalar(cuti)) return false;
 
-    //type is possibly a custom class, but this cuti was an item in reg.array
-    if(getReferenceType(cuti) == ALT_ARRAYITEM)
-      return false; //t3543
-
     //deref cuti (t3653, t3942, t3947, t3998, t41000, t41001, t41071)
     if(isAClass(cuti))
       return hasCustomArrayInAClassOrAncestor(getUlamTypeAsDeref(cuti));
 
-    return false; //even for non-classes
+    return false; //even for non-classes, t3543
   } //isClassACustomArray
 
   UTI CompilerState::getAClassCustomArrayType(UTI cuti)
@@ -3144,7 +3142,7 @@ namespace MFM {
       {
 	UTI scalarUTI = uti;
 	if(!ut->isScalar())
-	  scalarUTI = getUlamTypeAsScalar(uti); //ALT_ARRAYITEM ?
+	  scalarUTI = getUlamTypeAsScalar(uti); //ALT_ARRAYITEM no longer
 	scalarUTI = getUlamTypeAsDeref(scalarUTI); //and deref
 
 	//not a regular class, and not the template, so dig deeper for the stub
@@ -7540,7 +7538,7 @@ namespace MFM {
 
   bool CompilerState::isAtomRef(UTI auti)
   {
-    //do not include ALT_AS, ALT_ARRAYITEM, etc as Ref here. Specifically a ref (&).
+    //do not include ALT_AS, etc as Ref here. Specifically a ref (&).
     UlamType * aut = getUlamTypeByIndex(auti);
     return ((aut->getUlamTypeEnum() == UAtom) && isAltRefType(auti));
   }

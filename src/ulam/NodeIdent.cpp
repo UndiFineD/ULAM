@@ -756,8 +756,8 @@ namespace MFM {
     UlamType * nut = m_state.getUlamTypeByIndex(nuti);
     ULAMCLASSTYPE classtype = nut->getUlamClassType();
     //    if((classtype == UC_TRANSIENT) && (nut->getTotalBitSize() > MAXSTATEBITS))
-        if((classtype == UC_TRANSIENT) && (nut->getBitSize() > MAXSTATEBITS))
-	  return evalStatusReturnNoEpilog(UNEVALUABLE); //t41632
+    if((classtype == UC_TRANSIENT) && (nut->getBitSize() > MAXSTATEBITS))
+      return evalStatusReturnNoEpilog(UNEVALUABLE); //t41632
 
     evalNodeProlog(0); //new current frame pointer
 
@@ -918,7 +918,8 @@ namespace MFM {
 	     if(effself == Nouti)
 	       {
 		 UTI tmpeffself = tmpref.getUlamValueEffSelfTypeIdx();
-		 rtnUVPtr.setPtrTargetEffSelfType(tmpeffself); //t41629
+		 if(m_state.isAClass(tmpeffself))
+		   rtnUVPtr.setPtrTargetEffSelfType(tmpeffself, m_state); //t41629, t3613 Int
 	       }
 	   }
       }
@@ -944,7 +945,7 @@ namespace MFM {
 	if(effselfttype == Nouti)
 	  {
 	    effselfttype = selfttype;
-	    selfuvp.setPtrTargetEffSelfType(selfttype); //t41318
+	    selfuvp.setPtrTargetEffSelfType(selfttype, m_state); //t41318
 	  }
 	assert(m_state.okUTItoContinue(selfttype));
 
@@ -999,13 +1000,13 @@ namespace MFM {
 
     // can't use global m_currentAutoObjPtr, since there might be nested as conditional blocks.
     // NodeVarDecl for this autolocal sets AutoPtrForEval during its eval. Unlike ALT_AS,
-    // ALT_REF, ALT_CONSTREF, ALT_ARRAYITEM cannot guarantee its NodeVarRef init was last encountered.
+    // ALT_REF, ALT_CONSTREF(, ALT_ARRAYITEM) cannot guarantee its NodeVarRef init was last encountered.
     if(m_varSymbol->getAutoLocalType() == ALT_AS)
       {
 	return ((SymbolVariableStack *) m_varSymbol)->getAutoPtrForEval(); //haha! we're done.
       }
 
-    if(m_varSymbol->isAutoLocal()) //ALT_REF, ALT_CONSTREF or ALT_ARRAYITEM
+    if(m_varSymbol->isAutoLocal()) //ALT_REF, ALT_CONSTREF (or ALT_ARRAYITEM)
       {
 	UlamValue autoptr = ((SymbolVariableStack *) m_varSymbol)->getAutoPtrForEval();
 	if((autoptr.getUlamValueTypeIdx() != Nouti) && autoptr.isPtr())
@@ -1078,14 +1079,14 @@ namespace MFM {
 
 	ptr = UlamValue::makePtr(m_state.m_currentObjPtr.getPtrSlotIndex(), m_state.m_currentObjPtr.getPtrStorage(), nuti, m_state.determinePackable(nuti), m_state, objclasspos - relposofbase3 + relposofbase + m_varSymbol->getPosOffset(), m_varSymbol->getId());
 	if(m_state.isAClass(nuti))
-	  ptr.setPtrTargetEffSelfType(m_state.getUlamTypeAsDeref(nuti)); //self contained dm, its own effself
+	  ptr.setPtrTargetEffSelfType(m_state.getUlamTypeAsDeref(nuti), m_state); //self contained dm, its own effself, array as scalar or nouti.
 	ptr.checkForAbsolutePtr(m_state.m_currentObjPtr); //t3810
       }
     else
       {
 #if 0
 	//DEBUG ONLY!!, to view ptr saved with Ref's m_varSymbol.
-	if(m_varSymbol->isAutoLocal()) //ALT_REF, ALT_CONSTREF or ALT_ARRAYITEM
+	if(m_varSymbol->isAutoLocal()) //ALT_REF, ALT_CONSTREF (or ALT_ARRAYITEM)
 	  ptr = ((SymbolVariableStack *) m_varSymbol)->getAutoPtrForEval();
 #endif
 
@@ -1094,7 +1095,7 @@ namespace MFM {
 
 	//refs usually not effself (41629)
 	if(m_state.isAClass(nuti) && !m_state.isReference(nuti))
-	  ptr.setPtrTargetEffSelfType(m_state.getUlamTypeAsDeref(nuti));
+	  ptr.setPtrTargetEffSelfType(m_state.getUlamTypeAsDeref(nuti), m_state); //array as scalar or Nouti?
 	//else
       }
     return ptr;

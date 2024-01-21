@@ -372,7 +372,7 @@ namespace MFM {
 	rtnUV.setPtrLen(baselen);
 	rtnUV.setPtrTargetType(basetype);
 	if(rtnUV.getPtrTargetEffSelfType() == Nouti)
-	  rtnUV.setPtrTargetEffSelfType(subclass); //t41386
+	  rtnUV.setPtrTargetEffSelfType(subclass, m_state); //t41386
 	rtnUV.setPtrNameId(0);
       }
     else
@@ -440,7 +440,7 @@ namespace MFM {
 	ruvPtr.setPtrPos(subpos-ttpos+basepos); //reset to start state bits
 	ruvPtr.setPtrTargetType(m_state.getUlamTypeAsDeref(basetype));
 	if(ruvPtr.getPtrTargetEffSelfType() == Nouti)
-	  ruvPtr.setPtrTargetEffSelfType(subclass); //t41386
+	  ruvPtr.setPtrTargetEffSelfType(subclass, m_state); //t41386
 	ruvPtr.setPtrLen(baselen);
 	ruvPtr.setPtrNameId(0);
       }

@@ -464,7 +464,10 @@ namespace MFM {
 	else
 	  {
 	    // unpacked array requires a ptr
+	    // setup effself in new ptr, to avoid nouti when a class (t3172)
+	    UlamValue tmpruv = m_state.m_nodeEvalStack.loadUlamValueFromSlot(rslot);
 	    ruv = UlamValue::makePtr(rslot, EVALRETURN, nuti, packed, m_state); //ptr
+	    ruv.setPtrTargetEffSelfTypeFromAnotherUV(tmpruv, m_state); //t3172
 	  }
       }
 
@@ -478,7 +481,7 @@ namespace MFM {
     //before assert in CS, fails
     UTI luti = pluv.getPtrTargetType();
     UTI leffself = pluv.getPtrTargetEffSelfType();
-    bool isbaseclass = m_state.isAClass(luti) && m_state.isClassASubclassOf(leffself,luti);
+    bool isbaseclass = m_state.isAClass(luti) && m_state.isAClass(leffself) && m_state.isClassASubclassOf(leffself,luti); //t3706,7,8,10
 
     bool risbaseclass = false;
     UTI reffself = ruv.getUlamValueEffSelfTypeIdx();
@@ -487,7 +490,7 @@ namespace MFM {
       {
 	ruti = ruv.getPtrTargetType();
 	reffself = ruv.getPtrTargetEffSelfType();
-	risbaseclass = m_state.isAClass(ruti) && m_state.isClassASubclassOf(reffself,ruti);
+	risbaseclass = m_state.isAClass(ruti) && m_state.isAClass(reffself) && m_state.isClassASubclassOf(reffself,ruti);
       }
 
     if(isbaseclass)

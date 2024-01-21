@@ -408,15 +408,6 @@ namespace MFM {
 			m_argumentNodes->exchangeKids(argNodes[i], argCast, i);
 			argsWithCast++;
 		      }
-		    else if(alti == ALT_ARRAYITEM)
-		      {
-			//array item (ALT_ARRAYITEM) is okay, with a cast to its scalar (t3250)
-			//don't use makeCastingNode, since UTIC_SAME short-circuits; req'd cast
-			Node * argCast = Node::newCastingNode(argNodes[i], m_state.getUlamTypeAsDeref(auti));
-			assert(argCast != NULL); //cannot fail
-			m_argumentNodes->exchangeKids(argNodes[i], argCast, i);
-			argsWithCast++;
-		      }
 		    else if((alti == ALT_REF) || (alti == ALT_CONSTREF))
 		      {
 			//ref not allowed since doesn't share base class w non-refs (t41099)

@@ -725,6 +725,9 @@ namespace MFM {
     s32 offsetInt = m_state.getUlamTypeByIndex(offset.getUlamValueTypeIdx())->getDataAsCs32(offsetdata);
     //adjust pos by offset * len, according to its scalar type
     UlamValue scalarPtr = UlamValue::makeScalarPtr(pluv, m_state);
+    UTI scalarluti = scalarPtr.getPtrTargetType();
+    if(m_state.isAClass(scalarluti))
+      scalarPtr.setPtrTargetEffSelfType(scalarluti, m_state); //t3172, missing
 
     if(scalarPtr.incrementPtr(m_state, offsetInt))
       //copy result UV to stack, -1 relative to current frame pointer
@@ -996,7 +999,8 @@ namespace MFM {
 
     genCodeToStoreInto(fp, uvpass);
     UTI tt = uvpass.getPassTargetType();
-    if(!(isString || m_nodeLeft->isAConstant()) || (m_state.isReference(tt) && !m_state.isAtom(tt))) //t3953,t3973, not isAltRefType t3908, nor constant class (t41266), not constantatomarrayitem (t41484)
+    //    if(!(isString || m_nodeLeft->isAConstant()) || (m_state.isReference(tt) && !m_state.isAtom(tt))) //t3953,t3973, not isAltRefType t3908, nor constant class (t41266), not constantatomarrayitem (t41484)
+    if(!(isString || m_nodeLeft->isAConstant()) || !m_state.isAtomRef(tt)) //t3953,t3973, not isAltRefType t3908, nor constant class (t41266), not constantatomarrayitem (t41484), t3881
       Node::genCodeReadIntoATmpVar(fp, uvpass);
     else
       m_state.clearCurrentObjSymbolsForCodeGen();

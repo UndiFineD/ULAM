@@ -432,17 +432,59 @@ namespace MFM {
     m_uv.m_ptrValue.m_targetType = type;
   } //setPtrTargetType
 
-    UTI UlamValue::getPtrTargetEffSelfType()
+  UTI UlamValue::getPtrTargetEffSelfType()
   {
     assert(isPtr());
     return m_uv.m_ptrValue.m_targetEffSelf;
   } //getPtrTargetType
 
-  void UlamValue::setPtrTargetEffSelfType(UTI type)
+  void UlamValue::setPtrTargetEffSelfType(UTI type, CompilerState& state)
   {
     assert(isPtr());
+    if(state.isAClass(type))
+      {
+	if(!state.isScalar(getPtrTargetType()))
+	  type = Nouti;
+
+	assert(state.isScalar(type));
+      }
+    else
+      {
+	assert(type == Nouti); //clear for primitives and arrays of classes
+      }
     m_uv.m_ptrValue.m_targetEffSelf = type;
   } //setPtrTargetEffSelf
+
+  void UlamValue::setPtrTargetEffSelfTypeFromAnotherUV(UlamValue fmuv, CompilerState& state)
+  {
+    assert(isPtr());
+    UTI fmtype = fmuv.getUlamValueTypeIdx(); //==node type
+    bool isfmPtr = fmuv.isPtr();
+    if(isfmPtr) fmtype = fmuv.getPtrTargetType();
+
+    if(!state.isAClass(fmtype)) return; //classarray is a class enum
+
+    UTI fmeffself = fmuv.getUlamValueEffSelfTypeIdx();
+
+    if(isfmPtr) fmeffself = fmuv.getPtrTargetEffSelfType();
+
+    //use class scalar as eff self, not its array type ?? or maybe none????
+    if(state.okUTItoContinue(fmeffself))
+      {
+	if(!state.isScalar(fmeffself))
+	  {
+	    fmeffself = Nouti; //state.getUlamTypeAsScalar(fmeffself);
+	  }
+      }
+    else
+      {
+	if(!state.isScalar(fmtype))
+	  {
+	    fmeffself = Nouti; //state.getUlamTypeAsScalar(fmtype);
+	  }
+      }
+    setPtrTargetEffSelfType(fmeffself, state);
+  } //setPtrTargetEffSelfFromAnotherUV
 
   u16 UlamValue::getPtrNameId()
   {
