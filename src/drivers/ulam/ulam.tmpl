@@ -977,7 +977,7 @@ separateFiles(@files);
 push @ulamFiles, @coreElementFiles unless $NO_STD_ELEMENTS;
 
 # Collect the files we can pack without special concerns
-@normalPackableFiles = sort (@mfsFiles, @includeFiles, @includeFiles, @otherSrcFiles, @txtFiles);
+@normalPackableFiles = sort (@mfsFiles, @includeFiles, @otherSrcFiles, @txtFiles);
 
 # Stuff the stdlib tcc files at the front so explicit user tccs, if specified, will get copied over them
 @includeFiles = (@stdTccFiles, @includeFiles);
