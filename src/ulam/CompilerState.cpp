@@ -79,6 +79,7 @@ namespace MFM {
   static const char * IS_MANGLED_FUNCNAME_FOR_ATOM = "UlamClass<EC>::IsMethod"; //Uf_2is
 
   static const char * GETRELPOS_MANGLED_FUNCNAME = "internalCMethodImplementingGetRelativePositionOfBaseClass"; //Uf_2is
+  static const char * GETRELPOS_MANGLED_FUNCNAME_WITHCHECK = "internalCMethodImplementingGetRelativePositionOfBaseClassWithCheck"; //Uf_2is
   static const char * GETRELPOS_MANGLED_FUNCNAME_FOR_ATOM = "UlamClass<EC>::GetRelativePositionOfBaseClass"; //Uf_2is
 
   static const char * GETDATAMEMBERINFO_FUNCNAME = "GetDataMemberInfo";
@@ -144,7 +145,7 @@ namespace MFM {
     "*/\n\n";
 
   //use of this in the initialization list seems to be okay;
-  CompilerState::CompilerState(): m_linesForDebug(false), m_programDefST(*this), m_parsingLocalDef(false), m_parsingFUNCid(0), m_nextFunctionOrderNumber(1), m_parsingThisClass(Nouti), m_parsingConcreteClassFlag(false), m_parsingVariableSymbolTypeFlag(STF_NEEDSATYPE), m_gotStructuredCommentToken(false), m_parsingConditionalAs(false), m_eventWindow(*this), m_goAgainResolveLoop(false), m_pendingArgStubContext(0), m_pendingArgTypeStubContext(0), m_currentSelfSymbolForCodeGen(NULL), m_nextTmpVarNumber(0), m_nextNodeNumber(0), m_urSelfUTI(Nouti), m_emptyElementUTI(Nouti), m_classIdBits(CLASSIDBITS)
+  CompilerState::CompilerState(): m_linesForDebug(false), m_programDefST(*this), m_parsingLocalDef(false), m_parsingFUNCid(0), m_nextFunctionOrderNumber(1), m_parsingThisClass(Nouti), m_parsingConcreteClassFlag(false), m_parsingVariableSymbolTypeFlag(STF_NEEDSATYPE), m_initSubtreeSymbolsWithConstantsOnly(false), m_gotStructuredCommentToken(false), m_parsingConditionalAs(false), m_eventWindow(*this), m_goAgainResolveLoop(false), m_pendingArgStubContext(0), m_pendingArgTypeStubContext(0), m_currentSelfSymbolForCodeGen(NULL), m_nextTmpVarNumber(0), m_nextNodeNumber(0), m_urSelfUTI(Nouti), m_emptyElementUTI(Nouti), m_classIdBits(CLASSIDBITS)
   {
     m_classIdRegistryUTI.push_back(0); //initialize 0 for UrSelf
     m_err.init(this, debugOn, infoOn, noteOn, warnOn, waitOn, NULL);
@@ -2583,7 +2584,7 @@ namespace MFM {
     SymbolClass * csym = NULL;
     AssertBool isDefined = alreadyDefinedSymbolClass(cuti, csym);
     assert(isDefined);
-    return csym->isClassTemplate(cuti);
+    return csym->isClassTemplateByUTI(cuti);
   } //isClassATemplate
 
   bool CompilerState::isClassATemplate(NodeBlockClass * cblock)
@@ -4463,8 +4464,9 @@ namespace MFM {
 	hasHazyKin = tmphazykin || tmphazys;
       }
 
-    //search current class's local file scope only (not ancestors')
-    if(!found)
+    //search current class's local file scope only (not ancestors' unless in same file)
+    //if(!found) t41700, t41266, t41245,6,7
+    if(!found && (!useMemberBlock() || (getContextBlockNo() == getCurrentMemberClassBlockNo())))
       found = isIdInLocalFileScope(dataindex, symptr); //local constant or typedef
 
     return found;
@@ -4627,6 +4629,8 @@ namespace MFM {
   bool CompilerState::alreadyDefinedSymbolHere(u32 dataindex, Symbol * & symptr, bool& hasHazyKin)
   {
     bool brtn = false;
+    bool isType = isPossibleTypeName(dataindex); //t41488
+
     assert(!hasHazyKin);
 
     //start with the current "top" block and look down the stack
@@ -4636,6 +4640,10 @@ namespace MFM {
     while(!brtn && blockNode)
       {
 	brtn = blockNode->isIdInScope(dataindex,symptr); //check ST
+
+	//might keep looking for a constant..
+	if(!isType)
+	  brtn = brtn && (!m_initSubtreeSymbolsWithConstantsOnly || symptr->isConstant());
 
 	//hazy check..
 	hasHazyKin |= checkHasHazyKin(blockNode);
@@ -4657,6 +4665,7 @@ namespace MFM {
   bool CompilerState::isDataMemberIdInClassScope(u32 dataindex, Symbol * & symptr, bool& hasHazyKin)
   {
     bool brtn = false;
+    bool isType = isPossibleTypeName(dataindex);
     //might come from alreadyDefinedSymbol now, and have a hazy chain.
 
     //start with the current class block, until the 'variable id' is found.
@@ -4666,6 +4675,11 @@ namespace MFM {
     while(!brtn && cblock)
       {
 	brtn = cblock->isIdInScope(dataindex,symptr); //returns symbol
+
+	// might keep looking for a constant...
+	if(!isType)
+	  brtn = brtn && (!m_initSubtreeSymbolsWithConstantsOnly || symptr->isConstant());
+
 	hasHazyKin |= checkHasHazyKin(cblock); //self is stub
 	//traverse the chain, including templates
 	//(not ancestors; see alreadyDefinedSymbolByAncestorOf)
@@ -5312,7 +5326,9 @@ namespace MFM {
   void CompilerState::addSymbolToLocalsScope(Symbol * symptr, Locator loc)
   {
     assert(symptr);
-    NodeBlockLocals * localsblock = makeLocalsScopeBlock(loc); //getLocalsScopeLocator
+    Token fTok;
+    getFirstTokenForParsing(fTok); //supercedes loc arg
+    NodeBlockLocals * localsblock = makeLocalsScopeBlock(fTok.m_locator); //getLocalsScopeLocator
     assert(localsblock);
 
     symptr->setBlockNoOfST(localsblock->getNodeNo()); //invariant
@@ -5553,6 +5569,13 @@ namespace MFM {
     return m_pool.getIndexForDataString(nstr);
   }
 
+  bool CompilerState::isPossibleTypeName(u32 id)
+  {
+    std::string str = m_pool.getDataAsString(id);
+    char c = str.at(0);
+    return Token::isUpper(c);
+  }
+
   // note: we may miss a missing return value for non-void function; non-trivial to
   // do logic-flow analysis; gcc catches them until ulam template absorbs gcc errors.
   bool CompilerState::checkFunctionReturnNodeTypes(SymbolFunction * fsym)
@@ -5728,11 +5751,13 @@ namespace MFM {
     return "AS_ERROR";
   } //getAsMangledFunctionName
 
-  const char * CompilerState::getGetRelPosMangledFunctionName(UTI ltype)
+  const char * CompilerState::getGetRelPosMangledFunctionName(UTI ltype, bool doChk)
   {
     if(isAtom(ltype))
-      return GETRELPOS_MANGLED_FUNCNAME_FOR_ATOM;
+      return GETRELPOS_MANGLED_FUNCNAME_FOR_ATOM; //wo check, uses UlamClass method
 
+    if(doChk)
+      return GETRELPOS_MANGLED_FUNCNAME_WITHCHECK;
     return GETRELPOS_MANGLED_FUNCNAME;
   }
 
@@ -6960,6 +6985,22 @@ namespace MFM {
     return m_parsingThisClass;
   }
 
+  void CompilerState::saveFirstTokenForParsing(Token fTok)
+  {
+    m_firstTokenForParsing = fTok;
+  }
+
+  void CompilerState::getFirstTokenForParsing(Token& fTok)
+  {
+    fTok = m_firstTokenForParsing;
+  }
+
+  void CompilerState::clearFirstTokenForParsing()
+  {
+    Token clearTok;
+    m_firstTokenForParsing = clearTok;
+ }
+
   //set temporary flag for concrete class; used to set flag in SymbolClass
   void CompilerState::setConcreteClassFlagForParsing()
   {
@@ -6975,6 +7016,13 @@ namespace MFM {
   bool CompilerState::getConcreteClassFlagForParsing()
   {
     return m_parsingConcreteClassFlag;
+  }
+
+  void CompilerState::setLocalsScopeForParsing()
+  {
+    Token fTok;
+    getFirstTokenForParsing(fTok);
+    setLocalsScopeForParsing(fTok);
   }
 
   void CompilerState::setLocalsScopeForParsing(const Token& localTok)
@@ -7405,6 +7453,13 @@ namespace MFM {
     AssertBool isDefined = m_classContextStack.getCurrentClassContext(cc);
     assert(isDefined);
     return cc.getCurrentMemberClassBlock();
+  }
+
+  NNO CompilerState::getCurrentMemberClassBlockNo()
+  {
+    NodeBlockClass * memberclassblock = getCurrentMemberClassBlock();
+    assert(memberclassblock);
+    return memberclassblock->getNodeNo();
   }
 
   NodeBlock * CompilerState::getCurrentBlockForSearching()

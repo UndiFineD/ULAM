@@ -2,7 +2,8 @@
  * Lexer.h - Basic Lexical handling for ULAM
  *
  * Copyright (C) 2014-2019 The Regents of the University of New Mexico.
- * Copyright (C) 2014-2019 Ackleyshack LLC.
+ * Copyright (C) 2014-2024 Ackleyshack LLC.
+ * Copyright (C) 2020-2024 The Living Computation Foundation.
  *
  * This file is part of the ULAM programming language compilation system.
  *
@@ -29,7 +30,7 @@
   \file Lexer.h - Basic Lexical handling for ULAM
   \author Elena S. Ackley.
   \author David H. Ackley.
-  \date (C) 2014-2019 All rights reserved.
+  \date (C) 2014-2024 All rights reserved.
   \gpl
 */
 
@@ -54,6 +55,9 @@ namespace MFM{
 
     virtual u32 push(std::string filename, bool onlyOnce = true);
 
+    /** pass through filename to underlying sourcestream, not opened */
+    virtual u32 exists(std::string filename);
+
     /** returns Ulam version of current filename from underlying sourcestream; 0 is unknown */
     virtual u32 getFileUlamVersion() const;
 
@@ -61,6 +65,8 @@ namespace MFM{
     virtual void setFileUlamVersion(u32 ver);
 
     virtual const std::string getPathFromLocator(Locator& loc);  //calls m_SS
+
+    virtual bool peekFirstToken(Token & firstTok);
 
     virtual bool getNextToken(Token & returnTok);
 

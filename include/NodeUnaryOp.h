@@ -2,8 +2,8 @@
  * NodeUnaryOp.h -  Basic Node handling Unary Operations for ULAM
  *
  * Copyright (C) 2014-2017 The Regents of the University of New Mexico.
- * Copyright (C) 2014-2021 Ackleyshack LLC.
- * Copyright (C) 2020-2021 The Living Computation Foundation
+ * Copyright (C) 2014-2024 Ackleyshack LLC.
+ * Copyright (C) 2020-2024 The Living Computation Foundation
  *
  * This file is part of the ULAM programming language compilation system.
  *
@@ -30,7 +30,7 @@
   \file NodeUnaryOp.h -  Basic Node handling Unary Operations for ULAM
   \author Elena S. Ackley.
   \author David H. Ackley.
-  \date (C) 2014-2021   All rights reserved.
+  \date (C) 2014-2024   All rights reserved.
   \gpl
 */
 
@@ -60,6 +60,8 @@ namespace MFM{
 
     virtual void checkAbstractInstanceErrors();
 
+    virtual TBOOL checkVarUsedBeforeDeclared(u32 id, NNO declblockno);
+
     virtual void resetNodeLocations(Locator loc);
 
     virtual void print(File * fp);
@@ -68,7 +70,7 @@ namespace MFM{
 
     virtual void printOp(File * fp);
 
-    virtual bool isAConstant();
+    virtual TBOOL isAConstant();
 
     virtual bool isReadyConstant();
 

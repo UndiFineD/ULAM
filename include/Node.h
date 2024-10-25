@@ -2,8 +2,8 @@
  * Node.h - Basic Node of Nodes for ULAM
  *
  * Copyright (C) 2014-2019 The Regents of the University of New Mexico.
- * Copyright (C) 2014-2022 Ackleyshack LLC.
- * Copyright (C) 2020-2022 The Living Computation Foundation.
+ * Copyright (C) 2014-2024 Ackleyshack LLC.
+ * Copyright (C) 2020-2024 The Living Computation Foundation.
  *
  * This file is part of the ULAM programming language compilation system.
  *
@@ -30,7 +30,7 @@
   \file Node.h - Basic Node of Nodes for ULAM
   \author Elena S. Ackley.
   \author David H. Ackley.
-  \date (C) 2014-2022 All rights reserved.
+  \date (C) 2014-2024 All rights reserved.
   \gpl
 */
 
@@ -54,6 +54,8 @@
 #include "MapClassMemberDesc.h"
 
 namespace MFM{
+
+#define NODE_ASSERT(expr) { if(!(expr)) { Node::nodeFailPrint(); assert((expr)); } }
 
 enum EVALS { EVAL_RHS, EVAL_LHS, EVAL_SIDEEFFECTS};
 enum EvalStatus {ERROR, NOTREADY, NORMAL, RETURN, BREAK, CONTINUE, UNEVALUABLE};
@@ -91,6 +93,8 @@ enum EvalStatus {ERROR, NOTREADY, NORMAL, RETURN, BREAK, CONTINUE, UNEVALUABLE};
     virtual bool findNodeNo(NNO n, Node *& foundNode);
 
     virtual void checkAbstractInstanceErrors();
+
+    virtual TBOOL checkVarUsedBeforeDeclared(u32 id, NNO declblockno);
 
     virtual void print(File * fp);
 
@@ -186,7 +190,7 @@ enum EvalStatus {ERROR, NOTREADY, NORMAL, RETURN, BREAK, CONTINUE, UNEVALUABLE};
 
     virtual bool isACast();
 
-    virtual bool isAConstant();
+    virtual TBOOL isAConstant();
 
     virtual bool isAConstantClass();
 
@@ -295,6 +299,11 @@ enum EvalStatus {ERROR, NOTREADY, NORMAL, RETURN, BREAK, CONTINUE, UNEVALUABLE};
      * Returns converted const argument to all capital letters as a string
      */
     static std::string allCAPS(const char * s);
+
+
+    virtual void nodeFailPrint();
+
+    virtual void nodeFailPrint() const;
 
   protected:
 
@@ -454,7 +463,7 @@ enum EvalStatus {ERROR, NOTREADY, NORMAL, RETURN, BREAK, CONTINUE, UNEVALUABLE};
 
     void genCodeWriteToAutorefFromATmpVar(File * fp, UVPass& luvpass, UVPass& ruvpass);
 
-    virtual void genModelParameterHiddenArgs(File * fp, s32 epi);
+    virtual void genModelParameterHiddenArgsToFile(File * fp, s32 epi);
 
     void genCustomArrayMemberNameOfMethod(File * fp);
     void genCustomArrayHiddenArgs(File * fp, u32 urtmpnum);

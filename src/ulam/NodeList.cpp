@@ -18,7 +18,7 @@ namespace MFM{
     for(u32 i = 0; i < numparams; i++)
       {
 	Node * anode = ref.getNodePtr(i);
-	assert(anode);
+	NODE_ASSERT(anode);
 	Node * clone = anode->instantiate();
 	addNodeToList(clone);
       }
@@ -49,7 +49,7 @@ namespace MFM{
     NNO nno = getNodeNo();
     for(u32 i = 0; i < m_nodes.size(); i++)
       {
-	assert(m_nodes[i]);
+	NODE_ASSERT(m_nodes[i]);
 	m_nodes[i]->updateLineage(nno); //wrong! was pno
       }
     Node::setYourParentNo(pno); //missing
@@ -73,7 +73,7 @@ namespace MFM{
   bool NodeList::exchangeKids(Node * oldnptr, Node * newnptr, u32 n)
   {
     bool rtnb = false;
-    assert(n < m_nodes.size());
+    NODE_ASSERT(n < m_nodes.size());
     if(m_nodes[n] == oldnptr)
       {
          m_nodes[n] = newnptr;
@@ -90,7 +90,7 @@ namespace MFM{
     bool rtnb = false;
     for(u32 i = 0; i < m_nodes.size(); i++)
       {
-	assert(m_nodes[i]);
+	NODE_ASSERT(m_nodes[i]);
 	if(m_nodes[i]->findNodeNo(n, foundNode))
 	  {
 	    rtnb = true;
@@ -104,16 +104,36 @@ namespace MFM{
   {
     for(u32 i = 0; i < m_nodes.size(); i++)
       {
-	assert(m_nodes[i]);
+	NODE_ASSERT(m_nodes[i]);
 	m_nodes[i]->checkAbstractInstanceErrors();
       }
+  }
+
+  TBOOL NodeList::checkVarUsedBeforeDeclared(u32 id, NNO declblockno)
+  {
+    u32 hazynodes = 0;
+    for(u32 i = 0; i < m_nodes.size(); i++)
+      {
+	NODE_ASSERT(m_nodes[i]);
+	TBOOL tbnode = m_nodes[i]->checkVarUsedBeforeDeclared(id, declblockno);
+	if(tbnode == TBOOL_TRUE)
+	  return TBOOL_TRUE; //error hit bail
+	else if(tbnode == TBOOL_HAZY)
+	  hazynodes++;
+	//else
+      }
+
+    if(hazynodes > 0)
+      return TBOOL_HAZY;
+
+    return TBOOL_FALSE; //ok
   }
 
   void NodeList::resetNodeLocations(Locator loc)
   {
     for(u32 i = 0; i < m_nodes.size(); i++)
       {
-	assert(m_nodes[i]);
+	NODE_ASSERT(m_nodes[i]);
 	m_nodes[i]->resetNodeLocations(loc);
       }
   }
@@ -122,14 +142,14 @@ namespace MFM{
   {
     for(u32 i = 0; i < m_nodes.size(); i++)
       {
-	assert(m_nodes[i]);
+	NODE_ASSERT(m_nodes[i]);
 	m_nodes[i]->printPostfix(fp);
       }
   } //printPostfix
 
   void NodeList::printPostfix(File * fp, u32 n)
   {
-    assert(m_nodes[n]);
+    NODE_ASSERT(m_nodes[n]);
     m_nodes[n]->printPostfix(fp);
   } //printPostfix
 
@@ -138,7 +158,7 @@ namespace MFM{
     fp->write("(");
     for(u32 i = 0; i < m_nodes.size(); i++)
       {
-	assert(m_nodes[i]);
+	NODE_ASSERT(m_nodes[i]);
 	if(i > 0)
 	  fp->write(", ");
 
@@ -179,7 +199,7 @@ namespace MFM{
     UTI rtnuti = Void;
     for(u32 i = 0; i < m_nodes.size(); i++)
       {
-	assert(m_nodes[i]);
+	NODE_ASSERT(m_nodes[i]);
 	UTI puti = m_nodes[i]->checkAndLabelType(this);
 	if(puti == Nav)
 	  {
@@ -216,7 +236,7 @@ namespace MFM{
     for(s32 i = m_nodes.size() - 1; i >= 0; i--)
       {
 	u32 max1 = 0;
-	assert(m_nodes[i]);
+	NODE_ASSERT(m_nodes[i]);
 	m_nodes[i]->calcMaxDepth(max1, nomaxdepth, negrun); //side effects func def param (NodeVarDecl)
 	negrun += max1;
       }
@@ -226,7 +246,7 @@ namespace MFM{
   {
     for(u32 i = 0; i < m_nodes.size(); i++)
       {
-	assert(m_nodes[i]);
+	NODE_ASSERT(m_nodes[i]);
 	m_nodes[i]->countNavHzyNoutiNodes(ncnt, hcnt, nocnt);
       }
     Node::countNavHzyNoutiNodes(ncnt, hcnt, nocnt); //NodeList counts!
@@ -236,7 +256,7 @@ namespace MFM{
   {
     for(u32 i = 0; i < m_nodes.size(); i++)
       {
-	assert(m_nodes[i]);
+	NODE_ASSERT(m_nodes[i]);
 	m_nodes[i]->printUnresolvedLocalVariables(fid);
       }
   } //printUnresolvedLocalVariables
@@ -255,15 +275,15 @@ namespace MFM{
 
   EvalStatus NodeList::eval(u32 n)
   {
-    assert(n < m_nodes.size());
-    assert(m_nodes[n]);
+    NODE_ASSERT(n < m_nodes.size());
+    NODE_ASSERT(m_nodes[n]);
     return m_nodes[n]->eval();
   }
 
   EvalStatus NodeList::evalToStoreInto(u32 n)
   {
-    assert(n < m_nodes.size());
-    assert(m_nodes[n]);
+    NODE_ASSERT(n < m_nodes.size());
+    NODE_ASSERT(m_nodes[n]);
     return m_nodes[n]->evalToStoreInto();
   }
 
@@ -280,7 +300,7 @@ namespace MFM{
 
   bool NodeList::isEmptyList() const
   {
-    assert(m_nodes.size() > 0); //not NodeListEmpty, right?
+    NODE_ASSERT(m_nodes.size() > 0); //not NodeListEmpty, right?
     return m_nodes.empty(); //size==0
   }
 
@@ -289,7 +309,7 @@ namespace MFM{
     u32 nslots = 0;
     for(u32 i = 0; i < m_nodes.size(); i++)
       {
-	assert(m_nodes[i]);
+	NODE_ASSERT(m_nodes[i]);
 	nslots += m_state.slotsNeeded(m_nodes[i]->getNodeType());
       }
     return nslots;
@@ -297,45 +317,55 @@ namespace MFM{
 
   Node * NodeList::getNodePtr(u32 n) const
   {
-    assert(n < m_nodes.size());
+    NODE_ASSERT(n < m_nodes.size());
     return m_nodes[n];
   }
 
   UTI NodeList::getNodeType(u32 n)
   {
-    assert(n < m_nodes.size());
-    assert(m_nodes[n]);
+    NODE_ASSERT(n < m_nodes.size());
+    NODE_ASSERT(m_nodes[n]);
     return m_nodes[n]->getNodeType();
   }
 
-  bool NodeList::isAConstant()
+  TBOOL NodeList::isAConstant()
   {
-    bool rtnc = true;
+    TBOOL rtnc = TBOOL_TRUE;
     for(u32 i = 0; i < m_nodes.size(); i++)
       {
-	rtnc &= isAConstant(i); //t41202 (empty constant array init)
+	//rtnc &= isAConstant(i); //t41202 (empty constant array init)
+	TBOOL rtni = isAConstant(i);
+	if(rtni != rtnc)
+	  {
+	    if(rtnc == TBOOL_TRUE)
+	      rtnc = rtni; //hazy or false
+	    else if(rtnc == TBOOL_HAZY)
+	      rtnc = rtni; //false
+	  }
+	if(rtnc == TBOOL_FALSE)
+	  break;
       }
     return rtnc;
   }
 
-  bool NodeList::isAConstant(u32 n)
+  TBOOL NodeList::isAConstant(u32 n)
   {
-    assert(n < m_nodes.size());
-    assert(m_nodes[n]);
+    NODE_ASSERT(n < m_nodes.size());
+    NODE_ASSERT(m_nodes[n]);
     return m_nodes[n]->isAConstant();
   }
 
   bool NodeList::isAConstantFunctionParameter(u32 n)
   {
-    assert(n < m_nodes.size());
-    assert(m_nodes[n]);
+    NODE_ASSERT(n < m_nodes.size());
+    NODE_ASSERT(m_nodes[n]);
     return ((NodeVarDecl*) m_nodes[n])->isAConstantFunctionParameter();
   }
 
   bool NodeList::isFunctionCall(u32 n)
   {
-    assert(n < m_nodes.size());
-    assert(m_nodes[n]);
+    NODE_ASSERT(n < m_nodes.size());
+    NODE_ASSERT(m_nodes[n]);
     return m_nodes[n]->isFunctionCall();
   }
 
@@ -348,22 +378,22 @@ namespace MFM{
   {
     for(u32 i = 0; i < m_nodes.size(); i++)
       {
-	assert(m_nodes[i]);
+	NODE_ASSERT(m_nodes[i]);
 	m_nodes[i]->genCode(fp, uvpass);
       }
   }
 
   void NodeList::genCode(File * fp, UVPass& uvpass, u32 n)
   {
-    assert(n < m_nodes.size());
-    assert(m_nodes[n]);
+    NODE_ASSERT(n < m_nodes.size());
+    NODE_ASSERT(m_nodes[n]);
     m_nodes[n]->genCode(fp, uvpass);
   }
 
   void NodeList::genCodeToStoreInto(File * fp, UVPass& uvpass, u32 n)
   {
-    assert(n < m_nodes.size());
-    assert(m_nodes[n]);
+    NODE_ASSERT(n < m_nodes.size());
+    NODE_ASSERT(m_nodes[n]);
     m_nodes[n]->genCodeToStoreInto(fp, uvpass);
   }
 
@@ -371,7 +401,7 @@ namespace MFM{
   {
     for(u32 i = 0; i < m_nodes.size(); i++)
       {
-	assert(m_nodes[i]);
+	NODE_ASSERT(m_nodes[i]);
 	m_nodes[i]->genCodeConstantArrayInitialization(fp);
       }
   }
@@ -380,7 +410,7 @@ namespace MFM{
   {
     for(u32 i = 0; i < m_nodes.size(); i++)
       {
-	assert(m_nodes[i]);
+	NODE_ASSERT(m_nodes[i]);
 	m_nodes[i]->generateBuiltinConstantClassOrArrayInitializationFunction(fp, declOnly);
       }
   }

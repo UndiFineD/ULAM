@@ -47,7 +47,14 @@ namespace MFM {
 
   void NodeCast::checkAbstractInstanceErrors()
   {
+    assert(m_node);
     m_node->checkAbstractInstanceErrors();
+  }
+
+  TBOOL NodeCast::checkVarUsedBeforeDeclared(u32 id, NNO declblockno)
+  {
+    assert(m_node);
+    return m_node->checkVarUsedBeforeDeclared(id, declblockno);
   }
 
   const char * NodeCast::getName()
@@ -77,7 +84,7 @@ namespace MFM {
 
   UTI NodeCast::getCastedType()
   {
-    assert(m_node);
+    NODE_ASSERT(m_node);
     return m_node->getNodeType();
   }
 
@@ -101,7 +108,7 @@ namespace MFM {
     return true;
   }
 
-  bool NodeCast::isAConstant()
+  TBOOL NodeCast::isAConstant()
   {
     return m_node->isAConstant(); //pass thru
   }
@@ -164,7 +171,7 @@ namespace MFM {
   FORECAST NodeCast::safeToCastTo(UTI newType)
   {
     //possible user error, deal with it.
-    //assert(UlamType::compare(newType,getNodeType(), m_state) == UTIC_SAME);
+    //NODE_ASSERT(UlamType::compare(newType,getNodeType(), m_state) == UTIC_SAME);
     //ulamtype checks for complete, non array, and type specific rules
     return m_state.getUlamTypeByIndex(newType)->safeCast(getCastType());
   }
@@ -197,7 +204,7 @@ namespace MFM {
 	return Hzy; //short-circuit
       }
 
-    assert(nodeType != Nouti);
+    NODE_ASSERT(nodeType != Nouti);
 
     if(m_nodeTypeDesc)
       {
@@ -361,7 +368,7 @@ namespace MFM {
 		  }
 	      }
 
-	    if(m_state.isAltRefType(tobeType) && isAConstant())
+	    if(m_state.isAltRefType(tobeType) && (isAConstant() == TBOOL_TRUE))
 	      {
 		std::ostringstream msg;
 		msg << "Cannot explicitly cast a constant, " << m_node->getName() << ", type ";
@@ -481,7 +488,7 @@ namespace MFM {
 		else
 		  {
 		    m_node = Node::buildToIntCastingNode(m_node);
-		    assert(m_node);
+		    NODE_ASSERT(m_node);
 		    m_node->setNodeLocation(getNodeLocation());
 		    m_node->updateLineage(getNodeNo());
 		    UTI chkintuti = m_node->checkAndLabelType(this);
@@ -569,7 +576,7 @@ namespace MFM {
 
   EvalStatus NodeCast::eval()
   {
-    assert(m_node); //has to be
+    NODE_ASSERT(m_node); //has to be
     UTI nuti = getNodeType();
     UTI tobeType = getCastType();
     UTI nodeType = m_node->getNodeType(); //uv.getUlamValueType()
@@ -634,7 +641,7 @@ namespace MFM {
 	    return evalStatusReturn(UNEVALUABLE);
 	  }
 	else if(isExplicitCast())
-	  assert(uv.getUlamValueTypeIdx() == getCastType()); //t3153
+	  NODE_ASSERT(uv.getUlamValueTypeIdx() == getCastType()); //t3153
 	//else fall thru
       }
 
@@ -648,7 +655,7 @@ namespace MFM {
 
   EvalStatus NodeCast::evalToStoreInto()
   {
-    assert(m_node); //has to be
+    NODE_ASSERT(m_node); //has to be
 
     UTI nuti = getNodeType();
     UTI tobeType = getCastType();
@@ -715,7 +722,7 @@ namespace MFM {
 		    if(nodeeffselfType == Nouti) //t41053,t41592,t41630
 		      {
 			nodeeffselfType = nodeType;
-			assert(m_state.isAClass(nodeType)); //sanity
+			NODE_ASSERT(m_state.isAClass(nodeType)); //sanity
 		      }
 		    u32 baserelpos = 0;
 		    bool istobebaseofnode = m_state.isClassASubclassOf(nodeeffselfType, dereftobe);// && isreftobe;
@@ -731,11 +738,11 @@ namespace MFM {
 		    else if(istobebaseofnode)
 		      {
 			AssertBool gotrelpos = m_state.getABaseClassRelativePositionInAClass(nodeeffselfType, dereftobe, baserelpos);
-			assert(gotrelpos);
+			NODE_ASSERT(gotrelpos);
 
 			u32 relpos2;
 			AssertBool gotrelpos2 = m_state.getABaseClassRelativePositionInAClass(nodeeffselfType, nodeType, relpos2);
-			assert(gotrelpos2); //t41629, Yes!!
+			NODE_ASSERT(gotrelpos2); //t41629, Yes!!
 
 			ruvPtr.setPtrPos(ruvPtr.getPtrPos() + baserelpos - relpos2); //t41319
 			ruvPtr.setPtrLen(m_state.getBaseClassBitSize(dereftobe)); //t41364
@@ -744,7 +751,7 @@ namespace MFM {
 		      {
 			//t41141,t3756,t3757,t3790,t41052,t41054
 			AssertBool gotrelpos = m_state.getABaseClassRelativePositionInAClass(dereftobe, nodeType, baserelpos);
-			assert(gotrelpos);
+			NODE_ASSERT(gotrelpos);
 			ruvPtr.setPtrPos(ruvPtr.getPtrPos() - baserelpos);
 			ruvPtr.setPtrLen(m_state.getBaseClassBitSize(dereftobe));
 		      }
@@ -801,7 +808,7 @@ namespace MFM {
 
     UTI vuti = uv.getUlamValueTypeIdx();
 
-    assert(!m_state.isAltRefType(tobeType));
+    NODE_ASSERT(!m_state.isAltRefType(tobeType));
 
     if(!m_state.isAPrimitiveType(tobeType))
       {
@@ -813,13 +820,13 @@ namespace MFM {
 		UlamValue uvp = m_state.m_nodeEvalStack.loadUlamValueFromSlot(1); //reload
 		if(uvp.isPtr())
 		  {
-		    assert(!m_state.isAtom(tobeType));
+		    NODE_ASSERT(!m_state.isAtom(tobeType));
 		    UTI pttype = uvp.getPtrTargetType();
 		    UTI peffself = uvp.getPtrTargetEffSelfType();
 		    if(pttype == peffself) //dm
 		      {
 			s32 len = uvp.getPtrLen();
-			assert(len <= MAXBITSPERLONG);
+			NODE_ASSERT(len <= MAXBITSPERLONG);
 			u64 datavalue = uv.getDataLongFromAtom(uvp.getPtrPos(), len);
 			uv = UlamValue::makeAtom(pttype); //gets same effself
 			uv.putDataLong(ATOMFIRSTSTATEBITPOS, len, datavalue);
@@ -849,13 +856,13 @@ namespace MFM {
 	    else if(m_state.isAtom(vuti))
 	      {
 		//t3754
-		assert(m_state.isAClass(tobeType));
+		NODE_ASSERT(m_state.isAClass(tobeType));
 		UTI aeffself = uv.isPtr() ? uv.getPtrTargetEffSelfType() : uv.getUlamValueEffSelfTypeIdx();
 		ULAMCLASSTYPE classtype = m_state.getUlamTypeByIndex(tobeType)->getUlamClassType();
 		if(classtype == UC_ELEMENT)
 		  {
 		    uv.setUlamValueTypeIdx(tobeType);
-		    assert(aeffself == tobeType); //sanity, compare
+		    NODE_ASSERT(aeffself == tobeType); //sanity, compare
 		    uv.setUlamValueEffSelfTypeIdx(tobeType);
 		  }
 		else if(m_state.isClassASubclassOf(aeffself, tobeType))
@@ -923,31 +930,31 @@ namespace MFM {
       {
 	if(!m_state.isAPrimitiveType(vuti)) //t3611
 	  {
-	    assert(!m_state.isReference(tobeType));
+	    NODE_ASSERT(!m_state.isReference(tobeType));
 	    UlamValue uvp = m_state.m_nodeEvalStack.loadUlamValueFromSlot(1);
 	    s32 len = uvp.getPtrLen();
-	    assert(len <= MAXBITSPERLONG);
+	    NODE_ASSERT(len <= MAXBITSPERLONG);
 	    u64 datavalue = uv.getDataLongFromAtom(uvp.getPtrPos(), len);
 	    uv = UlamValue::makeImmediateLong(tobeType, datavalue, len);
 	  }
 	else if(!m_state.isScalar(vuti)) //t3651 primitive array
 	  {
-	    assert(!m_state.isReference(tobeType));
+	    NODE_ASSERT(!m_state.isReference(tobeType));
 	    UlamValue uvp = m_state.m_nodeEvalStack.loadUlamValueFromSlot(1);
 
 	    if(uvp.isPtr())
 	      {
-		assert(uvp.isPtr());
+		NODE_ASSERT(uvp.isPtr());
 		s32 len = uvp.getPtrLen();
-		assert(len <= MAXBITSPERLONG);
+		NODE_ASSERT(len <= MAXBITSPERLONG);
 		u64 datavalue = uv.getDataLongFromAtom(uvp.getPtrPos(), len);
 		uv = UlamValue::makeImmediateLong(tobeType, datavalue, len);
 	      }
 	    else
 	      {
-		assert(UlamType::compareForUlamValueAssignment(vuti,tobeType,m_state) == UTIC_SAME);
-		assert(!m_state.isScalar(tobeType)); //t3946
-		assert(m_state.isARefTypeOfUlamType(vuti,tobeType));
+		NODE_ASSERT(UlamType::compareForUlamValueAssignment(vuti,tobeType,m_state) == UTIC_SAME);
+		NODE_ASSERT(!m_state.isScalar(tobeType)); //t3946
+		NODE_ASSERT(m_state.isARefTypeOfUlamType(vuti,tobeType));
 		uvp.setUlamValueTypeIdx(tobeType);
 	      }
 	  }
@@ -1016,8 +1023,8 @@ namespace MFM {
       genCodeCastFromAReference(fp, uvpass);
     else if(isExplicitCast())
       uvpass.setPassTargetType(getCastType()); //minimal casting; e.g. to/fm Bits (t41570)
-    //assert(uvpass.getPassTargetType() == getCastType());
-    assert(UlamType::compare(uvpass.getPassTargetType(), getCastType(), m_state) == UTIC_SAME); //ish 20230603
+    //NODE_ASSERT(uvpass.getPassTargetType() == getCastType());
+    NODE_ASSERT(UlamType::compare(uvpass.getPassTargetType(), getCastType(), m_state) == UTIC_SAME); //ish 20230603
   } //genCode
 
  void NodeCast::genCodeToStoreInto(File * fp, UVPass& uvpass)
@@ -1034,7 +1041,7 @@ namespace MFM {
       genCodeToStoreIntoCastFromAReference(fp, uvpass); //noop
     else if(isExplicitCast())
       uvpass.setPassTargetType(getCastType()); //minimal casting; e.g. to/fm Bits (t41570)
-    assert(uvpass.getPassTargetType() == getCastType());
+    NODE_ASSERT(uvpass.getPassTargetType() == getCastType());
   } //genCodeToStoreInto
 
   void NodeCast::genCodeReadIntoATmpVar(File * fp, UVPass& uvpass)
@@ -1052,7 +1059,7 @@ namespace MFM {
 
     s32 tmpVarNum =  uvpass.getPassVarNum();
     UTI vuti = uvpass.getPassTargetType(); //replace
-    assert(m_state.okUTItoContinue(vuti));
+    NODE_ASSERT(m_state.okUTItoContinue(vuti));
 
     TMPSTORAGE vstor = uvpass.getPassStorage();
     bool isTerminal = (vstor == TERMINAL);
@@ -1105,7 +1112,7 @@ namespace MFM {
        else
 	 {
 	   //from larger bitsize BV to smaller BV
-	   assert(vstor == TMPTBV);
+	   NODE_ASSERT(vstor == TMPTBV);
 	   fp->write(m_state.getTmpVarAsString(vuti, tmpVarNum, vstor).c_str());
 	   fp->write(".CopyBV(");
 	   fp->write_decimal_unsigned(vbs - tbs); //from right-most bits
@@ -1119,7 +1126,7 @@ namespace MFM {
    else if(vstor == TMPTBV)
      {
        //tobe is not a BV, <= 64bits;
-       assert(tbs <= MAXBITSPERLONG);
+       NODE_ASSERT(tbs <= MAXBITSPERLONG);
        fp->write(" = ");
        fp->write(m_state.getTmpVarAsString(vuti, tmpVarNum, vstor).c_str());
        fp->write(".");
@@ -1154,7 +1161,7 @@ namespace MFM {
 
        fp->write(", ");
 
-       assert(!(m_state.isAtom(tobeType) || m_state.isAtom(vuti)));
+       NODE_ASSERT(!(m_state.isAtom(tobeType) || m_state.isAtom(vuti)));
        //LENGTH of node being casted (Uh_AP_mi::LENGTH ?)
        //fp->write(m_state.getBitVectorLengthAsStringForCodeGen(nodetype).c_str());
        fp->write_decimal(vut->getTotalBitSize()); //src length
@@ -1339,7 +1346,7 @@ namespace MFM {
       }
     else
       {
-	assert(m_state.isAtom(cos->getUlamTypeIdx()));
+	NODE_ASSERT(m_state.isAtom(cos->getUlamTypeIdx()));
 	bool isLocal = Node::isCurrentObjectALocalVariableOrArgument();
 	if(isLocal)
 	  {
@@ -1630,7 +1637,7 @@ namespace MFM {
     // also allow quark refs -> atom cast, if ancestor of atom type.
     // e.g. assignments (e.g. t3697, error/t3691).
     UTI  vuti = uvpass.getPassTargetType();
-    assert(m_state.okUTItoContinue(vuti));
+    NODE_ASSERT(m_state.okUTItoContinue(vuti));
     UlamType * vut = m_state.getUlamTypeByIndex(vuti);
     TMPSTORAGE vstor = uvpass.getPassStorage();
 
@@ -1669,8 +1676,8 @@ namespace MFM {
     TMPSTORAGE tstor = tobe->getTmpStorageTypeForTmpVar();
 
     UTI  vuti = uvpass.getPassTargetType();
-    assert(m_state.okUTItoContinue(vuti));
-    assert(m_state.isAtom(vuti)); //from atom/ref->quark/ref
+    NODE_ASSERT(m_state.okUTItoContinue(vuti));
+    NODE_ASSERT(m_state.isAtom(vuti)); //from atom/ref->quark/ref
     TMPSTORAGE vstor = uvpass.getPassStorage();
 
     //stack still empty when func call returns self (t41065, case foofunc())
@@ -1708,7 +1715,7 @@ namespace MFM {
       }
     else //no read for self
       {
-	assert(!cos->isSelf());
+	NODE_ASSERT(!cos->isSelf());
 	fp->write(cos->getMangledName().c_str()); //assumes only one!!!
       }
     fp->write(".GetType();"); GCNL;
@@ -1755,7 +1762,7 @@ namespace MFM {
     fp->write("const s32 ");
     fp->write(m_state.getTmpVarAsString(Int, tmpVarPos, TMPREGISTER).c_str());
     fp->write(" = ");
-    fp->write(m_state.getGetRelPosMangledFunctionName(vuti)); //UlamClass Method
+    fp->write(m_state.getGetRelPosMangledFunctionName(vuti,false)); //UlamClass Method
     fp->write("(uc, ");
     fp->write(m_state.getTmpVarAsString(Int, tmpVarType, TMPREGISTER).c_str()); //element type
     fp->write(", &");
@@ -1875,7 +1882,7 @@ namespace MFM {
     UlamType * tobe = m_state.getUlamTypeByIndex(tobeType);
 
     UTI  vuti = uvpass.getPassTargetType();
-    assert(m_state.okUTItoContinue(vuti));
+    NODE_ASSERT(m_state.okUTItoContinue(vuti));
     UlamType * vut = m_state.getUlamTypeByIndex(vuti);
 
     //stack still empty when func call returns self (t41065, case foofunc())
@@ -1903,7 +1910,7 @@ namespace MFM {
     //e.g. a quark here would fail, if not a superclass && ref
     if(usePassVal)
       {
-	assert(vut->isAltRefType());
+	NODE_ASSERT(vut->isAltRefType());
 	fp->write(uvpass.getTmpVarAsString(m_state).c_str());
       }
     else if(makeValFromPass)
@@ -1912,7 +1919,7 @@ namespace MFM {
       }
     else
       {
-	assert(cosut->isReference()); //t3697,t3834 (self is a ref,too)
+	NODE_ASSERT(cosut->isReference()); //t3697,t3834 (self is a ref,too)
 	fp->write(cos->getMangledName().c_str());
       }
 
@@ -2027,7 +2034,7 @@ namespace MFM {
 
     //vuti is subclass of tobeType (or ref tobe), or visa versa (t3757);
     // reftypeof same ?: (t41069); or DM same type as ancestor (t41292)
-    assert(m_state.isClassASubclassOf(vuti, tobeType) || m_state.isClassASubclassOf(tobeType, vuti) || (m_state.isARefTypeOfUlamType(tobeType, vuti) == UTIC_SAME));
+    NODE_ASSERT(m_state.isClassASubclassOf(vuti, tobeType) || m_state.isClassASubclassOf(tobeType, vuti) || (m_state.isARefTypeOfUlamType(tobeType, vuti) == UTIC_SAME));
 
     // "downcast" might not be true; compare to be sure the quark is-related to quark (t3758)
     if(m_state.isClassASubclassOf(tobeType, vuti)) //super (vuti) -> sub (tobe)
@@ -2065,7 +2072,7 @@ namespace MFM {
     u32 cosSize = m_state.m_currentObjSymbolsForCodeGen.size();
 
     Node::loadStorageAndCurrentObjectSymbols(stgcos, cos);
-    assert(cos && stgcos);
+    NODE_ASSERT(cos && stgcos);
     UTI stgcosuti = stgcos->getUlamTypeIdx();
     UlamType * stgcosut = m_state.getUlamTypeByIndex(stgcosuti);
     UTI cosuti = cos->getUlamTypeIdx();
@@ -2081,7 +2088,7 @@ namespace MFM {
       {
 	if((UlamType::compare(stgcosuti, vuti, m_state) != UTIC_SAME))
 	  {
-	    assert(cos->isDataMember()); //what else could it be?
+	    NODE_ASSERT(cos->isDataMember()); //what else could it be?
 
 	    //e.g. t41366 Bar& ref = eltref.t;
 	    // where Bar is a base of quark t, a dm of element eltref;
@@ -2107,6 +2114,7 @@ namespace MFM {
 
 		if(UlamType::compare(cosclassuti,m_state.getUlamTypeAsDeref(stgcosuti),m_state) != UTIC_SAME)
 		  {
+		    //extra runtime check, not for DMs //t41668,t41634
 		    //t41625
 		    fp->write(stgcos->getMangledName().c_str()); //ref
 		    fp->write(".GetEffectiveSelf()->");
@@ -2134,13 +2142,16 @@ namespace MFM {
 	      }
 	    else
 	      {
-		assert((u32) posToDM == uvpass.getPassPos()); //sanity (if true, don't need posToDM);
+		NODE_ASSERT((u32) posToDM == uvpass.getPassPos()); //sanity
+		if(UlamType::compare(m_state.getUlamTypeAsDeref(tobeType),cosuti,m_state) == UTIC_SAME)
+		  posToDM = 0; //t41634, not t3735,t41364,t41628
+		//if(!m_state.isReference(stgcosuti)) posToDM = 0; //t41364,t41628
 	      }
 	  }
       }
     else //else using uvpass in some manner..
       {
-	posToDM = uvpass.getPassPos(); //needed?
+	posToDM = uvpass.getPassPos(); //needed? t41065,t41301
       }
 
     s32 tmpVarPos = m_state.getNextTmpVarNumber();
@@ -2186,7 +2197,7 @@ namespace MFM {
       {
 	if(tmpvarDM > 0)
 	  {
-	    assert(cos->isDataMember());
+	    NODE_ASSERT(cos->isDataMember());
 	    fp->write(m_state.getTmpVarAsString(refcosuti, tmpvarDM, TMPAUTOREF).c_str());
 	  }
 	else
@@ -2254,10 +2265,10 @@ namespace MFM {
 	  {
 	    if(UlamType::compare(cosclassuti,stgcosuti,m_state) != UTIC_SAME)
 	      {
-		//t41626
+		//t41626, t41634
 		u32 relpos = UNRELIABLEPOS;
 		AssertBool gotpos = m_state.getABaseClassRelativePositionInAClass(stgcosuti, cosclassuti, relpos);
-		assert(gotpos); //known at compile time
+		NODE_ASSERT(gotpos); //known at compile time
 
 		fp->write(" + ");
 		fp->write_decimal_unsigned(relpos);
@@ -2280,6 +2291,9 @@ namespace MFM {
 	  }
 	else
 	  {
+	    //t41634 let;s try this, change effself to DM.
+	    fp->write(", &");
+	    fp->write(m_state.getTheInstanceMangledNameByIndex(cosuti).c_str());
 	    fp->write(");"); GCNL; //cos is data member,t41366,t41592
 	  }
       }
@@ -2356,10 +2370,10 @@ namespace MFM {
     Symbol * stgcos = NULL;
     Symbol * cos = NULL;
     Node::loadStorageAndCurrentObjectSymbols(stgcos, cos);
-    assert(cos && stgcos);
+    NODE_ASSERT(cos && stgcos);
     UTI stgcosuti = stgcos->getUlamTypeIdx();
 
-    assert(m_state.isReference(stgcosuti)); //not AltRefType
+    NODE_ASSERT(m_state.isReference(stgcosuti)); //not AltRefType
 
     // "downcast" might not be true; compare to be sure the transient is-related to quark
     if(m_state.isClassASubclassOf(tobeType, vuti)) //super (vuti) -> sub (tobe)
@@ -2385,7 +2399,7 @@ namespace MFM {
 
     bool usePassVal = m_state.m_currentObjSymbolsForCodeGen.empty() && ((vstor == TMPBITVAL) || (vstor == TMPAUTOREF));
     bool makeValFromPass = m_state.m_currentObjSymbolsForCodeGen.empty() && !usePassVal;
-    assert(!makeValFromPass); //can't make sub from immediate base
+    NODE_ASSERT(!makeValFromPass); //can't make sub from immediate base
 
     //offset of descendant NOT always 0 fm start of state bits (ulam-5)
     s32 tmpVarPos = m_state.getNextTmpVarNumber();
@@ -2477,7 +2491,7 @@ namespace MFM {
 
     if(usePassVal)
       {
-	assert(((stgcos == NULL) && (cos == NULL)) || (cos->isSelf() && (cos == stgcos))); //sanity, t41065, t41301
+	NODE_ASSERT(((stgcos == NULL) && (cos == NULL)) || (cos->isSelf() && (cos == stgcos))); //sanity, t41065, t41301
 	if(uvpass.getPassStorage() == TMPAUTOREF)
 	  {
 	    fp->write(uvpass.getTmpVarAsString(m_state).c_str());
@@ -2507,7 +2521,7 @@ namespace MFM {
       }
     else if(makeValFromPass) //an immediate complete obj
       {
-	assert(((stgcos == NULL) && (cos == NULL)) || (cos->isSelf() && (cos == stgcos))); //sanity
+	NODE_ASSERT(((stgcos == NULL) && (cos == NULL)) || (cos->isSelf() && (cos == stgcos))); //sanity
 	fp->write(m_state.getTheInstanceMangledNameByIndex(vuti).c_str());
 	fp->write(".");
 	fp->write(m_state.getGetRelPosMangledFunctionName(vuti)); //UlamElement GetRelPosMethod
@@ -2520,13 +2534,13 @@ namespace MFM {
     else
       {
 	//cos becomes stg..(t41141, t41292)
-	assert(!m_state.m_currentObjSymbolsForCodeGen.empty());
+	NODE_ASSERT(!m_state.m_currentObjSymbolsForCodeGen.empty());
 	UTI stgcosuti = cos->getUlamTypeIdx();
 	UlamType * stgcosut = m_state.getUlamTypeByIndex(stgcosuti);
 
 	if(m_state.isClassASubclassOf(tobeType, vuti)) //base(vuti)->sub(tobe)
 	  {
-	    assert(m_state.isReference(vuti)); //sanity
+	    NODE_ASSERT(m_state.isReference(vuti)); //sanity
 	    //both refs (t3757)
 	    if(stgcosut->isReference()) //not AltRefType
 	      {
@@ -2570,7 +2584,7 @@ namespace MFM {
 		//stg not a ref, so we can look up relpos at compile time
 		u32 baserelpos = UNRELIABLEPOS;
 		AssertBool gotbaserelpos = m_state.getABaseClassRelativePositionInAClass(vuti, tobeType, baserelpos);
-		assert(gotbaserelpos);
+		NODE_ASSERT(gotbaserelpos);
 		fp->write_decimal_unsigned(baserelpos);
 		fp->write("; //relpos of ");
 		fp->write(m_state.getUlamTypeNameBriefByIndex(tobeType).c_str());
@@ -2579,8 +2593,8 @@ namespace MFM {
 	  }
 	else if(stgcos->isSelf() && (stgcos != cos))
 	  {
-	    assert(!(cos->isTmpVarSymbol() && ((SymbolTmpVar *) cos)->isBaseClassRef())); //sanity, pls
-	    assert(cos->isDataMember()); //more sanity, no longer implicit self
+	    NODE_ASSERT(!(cos->isTmpVarSymbol() && ((SymbolTmpVar *) cos)->isBaseClassRef())); //sanity, pls
+	    NODE_ASSERT(cos->isDataMember()); //more sanity, no longer implicit self
 
 	    fp->write_decimal(cos->getPosOffset());
 	    fp->write("; //dm"); GCNL; //t41634,5
@@ -2609,8 +2623,8 @@ namespace MFM {
   {
     UTI tobeType = getCastType();
     UlamType * tobe = m_state.getUlamTypeByIndex(tobeType);
-    assert(!tobe->isAltRefType());
-    assert(m_state.isAtom(tobeType) || m_state.isASeenElement(tobeType) || m_state.isAPrimitiveType(tobeType) || (uvpass.getPassTargetType() == tobeType)); //sanity? terr/t3681,t3843; t3583,t3611; done t3562
+    NODE_ASSERT(!tobe->isAltRefType());
+    NODE_ASSERT(m_state.isAtom(tobeType) || m_state.isASeenElement(tobeType) || m_state.isAPrimitiveType(tobeType) || (uvpass.getPassTargetType() == tobeType)); //sanity? terr/t3681,t3843; t3583,t3611; done t3562
     uvpass.setPassTargetType(tobeType); //minimal casting; including atomref to atom(non-ref)
     m_state.clearCurrentObjSymbolsForCodeGen(); //clear remnant of lhs
   } //genCodeCastFromAReference
@@ -2621,7 +2635,7 @@ namespace MFM {
     UTI tobeType = getCastType();
     if(isAConstantClass() || isAConstant())
       {
-	assert(m_state.isConstantRefType(tobeType)); //t41238-9,t41240,t41242,error/t41248,error/t41253
+	NODE_ASSERT(m_state.isConstantRefType(tobeType)); //t41238-9,t41240,t41242,error/t41248,error/t41253
       }
     uvpass.setPassTargetType(tobeType); //minimal casting, t3812
     return;
@@ -2631,7 +2645,7 @@ namespace MFM {
   {
     UTI tobeType = getCastType();
     UlamType * tobe = m_state.getUlamTypeByIndex(tobeType);
-    assert(!tobe->isAltRefType());
+    NODE_ASSERT(!tobe->isAltRefType());
     uvpass.setPassTargetType(tobeType); //minimal casting; including atomref to atom(non-ref)
     return;
   } //genCodeToStoreIntoCastFromAReference
@@ -2675,7 +2689,7 @@ namespace MFM {
       {
 	if(tobe->isNumericType())
 	  {
-	    assert(m_state.quarkHasAToIntMethod(nodeType)); //checked by c&l
+	    NODE_ASSERT(m_state.quarkHasAToIntMethod(nodeType)); //checked by c&l
 	    return (tobeType == Int); //no need to cast
 	  }
 	return true;
@@ -2684,7 +2698,7 @@ namespace MFM {
     // size secondary when different classes, possibly related (e.g. t3779)
     // even constant may need casting (e.g. narrowing for saturation)
     // Bool constants require casts to generate "full" true UVPass (>1-bit).
-    return( isExplicitCast() || (typEnum == Class) || (typEnum != nodetypEnum) || (m_state.getBitSize(tobeType) != m_state.getBitSize(nodeType)) || ( (nodetypEnum == Bool) && isAConstant() && (m_state.getBitSize(tobeType)>1)));
+    return( isExplicitCast() || (typEnum == Class) || (typEnum != nodetypEnum) || (m_state.getBitSize(tobeType) != m_state.getBitSize(nodeType)) || ( (nodetypEnum == Bool) && (isAConstant() == TBOOL_TRUE) && (m_state.getBitSize(tobeType)>1)));
   } //needsACast
 
 } //end MFM

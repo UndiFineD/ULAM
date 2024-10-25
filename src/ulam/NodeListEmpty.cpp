@@ -74,9 +74,9 @@ namespace MFM{
     return; //override NodeList
   } //calcMaxDepth
 
-  bool NodeListEmpty::isAConstant()
+  TBOOL NodeListEmpty::isAConstant()
   {
-    return true;
+    return TBOOL_TRUE;
   }
 
   UTI NodeListEmpty::foldConstantExpression()
@@ -117,7 +117,7 @@ namespace MFM{
   bool NodeListEmpty::buildArrayValueInitialization(BV8K& bvtmp)
   {
     UTI nuti = Node::getNodeType();
-    assert(m_state.okUTItoContinue(nuti));
+    NODE_ASSERT(m_state.okUTItoContinue(nuti));
     if(nuti == Void)
       {
 	setNodeType(Hzy);

@@ -2,7 +2,8 @@
  * Tokenizer.h -  Basic returning of Tokens for ULAM
  *
  * Copyright (C) 2014-2017 The Regents of the University of New Mexico.
- * Copyright (C) 2014-2017 Ackleyshack LLC.
+ * Copyright (C) 2014-2024 Ackleyshack LLC.
+ * Copyright (C) 2020-2024 The Living Computation Foundation.
  *
  * This file is part of the ULAM programming language compilation system.
  *
@@ -29,7 +30,7 @@
   \file Tokenizer.h -  Basic returning of Tokens for ULAM
   \author Elena S. Ackley.
   \author David H. Ackley.
-  \date (C) 2014-2017 All rights reserved.
+  \date (C) 2014-2024 All rights reserved.
   \gpl
 */
 
@@ -52,6 +53,11 @@ namespace MFM{
     /** pass through filename to underlying sourcestream */
     virtual u32 push(std::string filename, bool onlyOnce = true) = 0;
 
+    /** pass through filename to underlying sourcestream, not opened */
+    virtual u32 exists(std::string filename) = 0;
+
+    /** get First token in ulam file; and unread it */
+    virtual bool peekFirstToken(Token & firstTok) = 0;
 
     /** read SourceStream and produce TOKEN: get next byte, skip white
 	space, return special characters, identifier token (string of

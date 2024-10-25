@@ -12,7 +12,7 @@ namespace MFM {
 
   UTI NodeBinaryOpShift::checkAndLabelType(Node * thisparentnode)
   {
-    assert(m_nodeLeft && m_nodeRight);
+    NODE_ASSERT(m_nodeLeft && m_nodeRight);
     UTI leftType = m_nodeLeft->checkAndLabelType(this);
     UTI rightType = m_nodeRight->checkAndLabelType(this);
     TBOOL rtntb = NodeBinaryOp::buildandreplaceOperatorOverloadFuncCallNode(thisparentnode);
@@ -64,7 +64,7 @@ namespace MFM {
 	  }
       } //complete
 
-    if(m_state.okUTItoContinue(newType) && isAConstant() && m_nodeLeft->isReadyConstant() && m_nodeRight->isReadyConstant())
+    if(m_state.okUTItoContinue(newType) && (isAConstant() == TBOOL_TRUE) && m_nodeLeft->isReadyConstant() && m_nodeRight->isReadyConstant())
       return constantFold(thisparentnode);
 
     return newType;
@@ -77,7 +77,7 @@ namespace MFM {
   // since their types must be identical.
   bool NodeBinaryOpShift::doBinaryOperation(s32 lslot, s32 rslot, u32 slots)
   {
-    assert(slots);
+    NODE_ASSERT(slots);
     UTI nuti = getNodeType();
     if(m_state.isScalar(nuti)) //not an array
       {
@@ -171,7 +171,7 @@ namespace MFM {
 	  }
 
 	//check for big shift values
-	if(m_nodeRight->isAConstant() && m_nodeRight->isReadyConstant())
+	if((m_nodeRight->isAConstant() == TBOOL_TRUE) && (m_nodeRight->isReadyConstant() == TBOOL_TRUE))
 	  {
 	    if(m_nodeRight->isWordSizeConstant(lwordsize))
 	      {

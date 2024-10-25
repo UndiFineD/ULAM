@@ -26,6 +26,11 @@ namespace MFM {
     return m_SS.push(filename,onlyOnce);
   }
 
+  u32 Lexer::exists(std::string filename)
+  {
+    return m_SS.exists(filename);
+  }
+
   u32 Lexer::getFileUlamVersion() const
   {
     return m_SS.getFileUlamVersion();
@@ -39,6 +44,11 @@ namespace MFM {
   void Lexer::unread()
   {
     return m_SS.unread();
+  }
+
+  bool Lexer::peekFirstToken(Token & firstTok)
+  {
+    return getNextToken(firstTok);
   }
 
   bool Lexer::getNextToken(Token & returnTok)

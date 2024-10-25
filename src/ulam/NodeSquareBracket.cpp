@@ -86,9 +86,12 @@ namespace MFM {
     return true; //not for array declaration; includes custom array items
   }
 
-  bool NodeSquareBracket::isAConstant()
+  TBOOL NodeSquareBracket::isAConstant()
   {
-    return m_nodeLeft->isAConstant() && m_nodeRight->isAConstant();
+    TBOOL tbleft = m_nodeLeft->isAConstant();
+    if(tbleft != TBOOL_TRUE)
+      return tbleft; //false or hazy
+    return m_nodeRight->isAConstant();
   }
 
   bool NodeSquareBracket::isAConstantClass()
@@ -114,7 +117,7 @@ namespace MFM {
   // used to select an array item; not for declaration
   UTI NodeSquareBracket::checkAndLabelType(Node * thisparentnode)
   {
-    assert(m_nodeLeft);
+    NODE_ASSERT(m_nodeLeft);
     u32 errorCount = 0;
     u32 hazyCount = 0;
     UTI newType = Nav; //init
@@ -207,7 +210,7 @@ namespace MFM {
 	      }
 	    else
 	      {
-		assert(letyp == Class);
+		NODE_ASSERT(letyp == Class);
 		//overload operator[] supercedes custom array (t41129, t41583)
 		TBOOL rtntb = NodeBinaryOp::buildandreplaceOperatorOverloadFuncCallNode(thisparentnode);
 		if(rtntb == TBOOL_TRUE)
@@ -262,7 +265,8 @@ namespace MFM {
 	  {
 	    // arraysize is zero! not accessible. runtime check
 	    // unless the index is a "ready" constant
-	    if(m_nodeRight->isAConstant())
+	    TBOOL iscnstright = m_nodeRight->isAConstant();
+	    if(iscnstright == TBOOL_TRUE)
 	      {
 		s32 rindex;
 		UTI rt;
@@ -291,7 +295,7 @@ namespace MFM {
 		else
 		  {
 		    s32 arraysize = m_state.getArraySize(leftType);
-		    assert(arraysize >= 0);
+		    NODE_ASSERT(arraysize >= 0);
 		    if(rindex > arraysize)
 		      {
 			std::ostringstream msg;
@@ -304,7 +308,20 @@ namespace MFM {
 			return Nav;
 		      }
 		  }
-	      } //right index is a constant
+	      }
+	    else if(iscnstright == TBOOL_HAZY)
+	      {
+		std::ostringstream msg;
+		msg << "Constant array item specifier may not be constant ";
+		msg << m_nodeLeft->getName();
+		msg << m_state.getUlamTypeNameByIndex(leftType).c_str();
+		MSG(getNodeLocationAsString().c_str(), msg.str().c_str(), WAIT);
+		setNodeType(Hzy);
+		clearSymbolPtr();
+		m_state.setGoAgain();
+		return Hzy;
+	      }
+	    // else not constant right index
 	  }
 
 	//set up idxuti..RHS
@@ -360,7 +377,7 @@ namespace MFM {
 		    //replace node with func call to 'aref' (t41000, t41001)
 		    Node * newnode = buildArefFuncCallNode();
 		    AssertBool swapOk = Node::exchangeNodeWithParent(newnode, thisparentnode);
-		    assert(swapOk);
+		    NODE_ASSERT(swapOk);
 
 		    m_nodeRight = NULL; //recycled
 		    m_nodeLeft = NULL; //recycled
@@ -409,17 +426,17 @@ namespace MFM {
 	      hazyCount++;
 	    else
 	      errorCount++;
-	  }
-      } //lt not nav, might be Hzy
-    else
-      {
-	if(leftType == Nav)
-	  errorCount++;
-	else if(leftType == Hzy)
-	  hazyCount++;
+	  } //lt not nav, might be Hzy
 	else
-	  hazyCount++;
-      }
+	  {
+	    if(leftType == Nav)
+	      errorCount++;
+	    else if(leftType == Hzy)
+	      hazyCount++;
+	    //else
+	    //  hazyCount++; //t3122
+	  }
+      } //isComplete
 
     if((errorCount == 0) && (hazyCount == 0))
       {
@@ -454,13 +471,13 @@ namespace MFM {
   bool NodeSquareBracket::getConstantArrayItemValue(BV8K& bvitem)
   {
     bool rtnok = false;
-    assert(m_nodeLeft->isAConstant() && m_nodeRight->isAConstant());
+    NODE_ASSERT((m_nodeLeft->isAConstant() == TBOOL_TRUE) && (m_nodeRight->isAConstant() == TBOOL_TRUE));
     UTI leftType = m_nodeLeft->getNodeType();
     s32 rindex;
     UTI rt;
     if(getArraysizeInBracket(rindex,rt)) //t41198
       {
-	assert((rindex >= 0) && (rindex < m_state.getArraySize(leftType))); //catchable during c&l
+	NODE_ASSERT((rindex >= 0) && (rindex < m_state.getArraySize(leftType))); //catchable during c&l
 	//fold into a constant class (t41273); not a list
 	BV8K bvccatmp;
 	if(m_nodeLeft->getConstantValue(bvccatmp))
@@ -494,7 +511,7 @@ namespace MFM {
     UTI leftType = m_nodeLeft->getNodeType(); //refs handled (t41583)
 
     TokenType opTokType = Token::getTokenTypeFromString("[]"); //was getName()
-    assert(opTokType != TOK_LAST_ONE);
+    NODE_ASSERT(opTokType != TOK_LAST_ONE);
     Token opTok(opTokType, getNodeLocation(), 0);
     u32 opolId = Token::getOperatorOverloadFullNameId(opTok, &m_state);
     if(opolId == 0)
@@ -532,10 +549,10 @@ namespace MFM {
 
     //fill in func symbol during type labeling;
     Node * fcallNode = new NodeFunctionCall(identTok, NULL, m_state);
-    assert(fcallNode);
+    NODE_ASSERT(fcallNode);
     fcallNode->setNodeLocation(identTok.m_locator);
     Node * mselectNode = new NodeMemberSelect(m_nodeLeft, fcallNode, m_state);
-    assert(mselectNode);
+    NODE_ASSERT(mselectNode);
     mselectNode->setNodeLocation(identTok.m_locator);
 
     ((NodeFunctionCall *) fcallNode)->addArgument(m_nodeRight);
@@ -566,7 +583,7 @@ namespace MFM {
 
   EvalStatus NodeSquareBracket::eval()
   {
-    assert(m_nodeLeft && m_nodeRight);
+    NODE_ASSERT(m_nodeLeft && m_nodeRight);
     UTI nuti = getNodeType();
     if(nuti == Nav) return evalErrorReturn();
 
@@ -700,7 +717,7 @@ namespace MFM {
 
   EvalStatus NodeSquareBracket::evalToStoreInto()
   {
-    assert(m_nodeLeft && m_nodeRight);
+    NODE_ASSERT(m_nodeLeft && m_nodeRight);
     UTI nuti = getNodeType();
     if(nuti == Nav) return evalErrorReturn();
 
@@ -793,7 +810,7 @@ namespace MFM {
   //see also NodeIdent
   bool NodeSquareBracket::installSymbolTypedef(TypeArgs& args, Symbol *& asymptr)
   {
-    assert(m_nodeLeft && m_nodeRight);
+    NODE_ASSERT(m_nodeLeft && m_nodeRight);
 
     if(!m_nodeLeft)
       {
@@ -833,7 +850,7 @@ namespace MFM {
       }
 
     args.m_arraysize = UNKNOWNSIZE; // no eval yet
-    assert(m_nodeLeft);
+    NODE_ASSERT(m_nodeLeft);
     return m_nodeLeft->installSymbolConstantValue(args, asymptr);
   } //installSymbolConstantValue
 
@@ -860,7 +877,7 @@ namespace MFM {
       }
 
     args.m_arraysize = UNKNOWNSIZE; // no eval yet
-    assert(m_nodeLeft);
+    NODE_ASSERT(m_nodeLeft);
     return m_nodeLeft->installSymbolVariable(args, asymptr);
   } //installSymbolVariable
 
@@ -931,7 +948,7 @@ namespace MFM {
     UlamType * sizeut = m_state.getUlamTypeByIndex(sizetype);
 
     // expects a constant, numeric type within []
-    if(sizeut->isNumericType() && m_nodeRight->isAConstant())
+    if(sizeut->isNumericType() && (m_nodeRight->isAConstant() == TBOOL_TRUE))
       {
 	evalNodeProlog(0); //new current frame pointer
 	makeRoomForNodeType(sizetype); //offset a constant expression
@@ -1000,7 +1017,7 @@ namespace MFM {
     genCodeToStoreInto(fp, uvpass);
     UTI tt = uvpass.getPassTargetType();
     //    if(!(isString || m_nodeLeft->isAConstant()) || (m_state.isReference(tt) && !m_state.isAtom(tt))) //t3953,t3973, not isAltRefType t3908, nor constant class (t41266), not constantatomarrayitem (t41484)
-    if(!(isString || m_nodeLeft->isAConstant()) || !m_state.isAtomRef(tt)) //t3953,t3973, not isAltRefType t3908, nor constant class (t41266), not constantatomarrayitem (t41484), t3881
+    if(!(isString || (m_nodeLeft->isAConstant() == TBOOL_TRUE)) || !m_state.isAtomRef(tt)) //t3953,t3973, not isAltRefType t3908, nor constant class (t41266), not constantatomarrayitem (t41484), t3881
       Node::genCodeReadIntoATmpVar(fp, uvpass);
     else
       m_state.clearCurrentObjSymbolsForCodeGen();
@@ -1008,7 +1025,7 @@ namespace MFM {
 
   void NodeSquareBracket::genCodeToStoreInto(File * fp, UVPass& uvpass)
   {
-    assert(m_nodeLeft && m_nodeRight);
+    NODE_ASSERT(m_nodeLeft && m_nodeRight);
     //wipe out before getting item within sq brackets
     std::vector<Symbol *> saveCOSVector = m_state.m_currentObjSymbolsForCodeGen;
     m_state.clearCurrentObjSymbolsForCodeGen();
@@ -1026,9 +1043,9 @@ namespace MFM {
     UTI luti = luvpass.getPassTargetType();
     UlamType * lut = m_state.getUlamTypeByIndex(luti);
     s32 arraysize = lut->getArraySize();
-    assert(!lut->isScalar());
+    NODE_ASSERT(!lut->isScalar());
 
-    if(!m_nodeRight->isAConstant()) //Wed Jul 11 18:02:46 2018
+    if(m_nodeRight->isAConstant() == TBOOL_FALSE) //Wed Jul 11 18:02:46 2018
       {
 	m_state.indentUlamCode(fp);
 	fp->write("if(");
@@ -1044,11 +1061,11 @@ namespace MFM {
       }
 
     //save autoref into a tmpvar symbol
-    assert(!m_state.m_currentObjSymbolsForCodeGen.empty());
+    NODE_ASSERT(!m_state.m_currentObjSymbolsForCodeGen.empty());
     Symbol * cossym = m_state.m_currentObjSymbolsForCodeGen.back();
     UTI cossuti = cossym->getUlamTypeIdx();
     UlamType * cossut = m_state.getUlamTypeByIndex(cossuti);
-    assert(!cossut->isScalar());
+    NODE_ASSERT(!cossut->isScalar());
 
     if(Node::isCurrentObjectsContainingAConstantClass() >= 0)
       {
@@ -1092,7 +1109,7 @@ namespace MFM {
 
   void NodeSquareBracket::genCodeAUserStringByte(File * fp, UVPass& uvpass)
   {
-    assert(m_nodeLeft && m_nodeRight);
+    NODE_ASSERT(m_nodeLeft && m_nodeRight);
     //wipe out before getting item within sq brackets
     std::vector<Symbol *> saveCOSVector = m_state.m_currentObjSymbolsForCodeGen;
     m_state.clearCurrentObjSymbolsForCodeGen();

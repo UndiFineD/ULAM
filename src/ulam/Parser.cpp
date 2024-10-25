@@ -113,6 +113,16 @@ namespace MFM {
     if(!m_state.getClassNameFromFileName(startstr, compileThisId))
       return 1; //1 error
 
+    // The First Token locator is used for locals filescope defs; Preprocessing directive 'load'
+    //  takes the loc of this first token, from the file that has the load; so, a non-ulamfilename
+    //  with localdefs may be used by more than one ulam class. (ulam-6)
+    //  The 'use' class directive (ulam filenames only) now keeps its own loc from its first token
+    //  for their localdefs by queing the file. (ulam-6)
+    Token firstTok;
+    AssertBool firstpeek = peekFirstToken(firstTok); //t3872,t41130; error/t3893
+    assert(firstpeek);
+    m_state.saveFirstTokenForParsing(firstTok);
+
     //here's the start (first token)!!  preparser will handle the VERSION_DECL,
     //as well as USE and LOAD keywords.
     while(!parseThisClass());
@@ -159,6 +169,8 @@ namespace MFM {
 	msg << m_state.m_pool.getDataAsString(compileThisId).c_str();
 	MSG((rootNode ? rootNode->getNodeLocationAsString().c_str() : ""), msg.str().c_str(), INFO);
       }
+
+    m_state.clearFirstTokenForParsing();
     return (errs);
   } //parseProgram
 
@@ -179,7 +191,8 @@ namespace MFM {
       {
 	if(pTok.m_type == TOK_KW_LOCALDEF)
 	  {
-	    m_state.setLocalsScopeForParsing(pTok);
+	    //m_state.setLocalsScopeForParsing(pTok);
+	    m_state.setLocalsScopeForParsing();
 	    parseLocalDef(); //returns bool
 	    m_state.clearLocalsScopeForParsing();
 	    return parseThisClass();
@@ -3723,8 +3736,10 @@ namespace MFM {
     // don't return a NodeConstant, instead of NodeIdent, without arrays
     // even if already defined as one. lazy evaluate.
     // handle 'super' and 'self' as KEYWORDS instead of identifiers (ulam-5) t41337
-    bool isDefined = m_state.isIdInCurrentScope(m_state.getTokenDataAsStringId(identTok), asymptr); //t3887
-    if(!isDefined && (identTok.m_type == TOK_IDENTIFIER) && m_state.m_parsingVariableSymbolTypeFlag == STF_CLASSINHERITANCE)
+    bool isDefined = m_state.isIdInCurrentScope(m_state.getTokenDataAsStringId(identTok), asymptr); //t3887, t3219, t41013, t41007, t3455
+    bool makealocalsconstant = (!isDefined && (identTok.m_type == TOK_IDENTIFIER) && m_state.m_parsingVariableSymbolTypeFlag == STF_CLASSINHERITANCE);
+
+    if(makealocalsconstant)
       {
 	bool locDefined = m_state.isIdInLocalFileScope(identTok.m_dataindex, asymptr);
 	NodeBlockLocals * localsblock = m_state.getLocalsScopeBlock(m_state.getContextBlockLoc());
@@ -3741,6 +3756,12 @@ namespace MFM {
 	    m_state.popClassContext();
 	  }
 	//else (t41007)
+      }
+
+    //DM init with DM, clear symbol and lookup during c&l (t41698)
+    if(isDefined && (m_state.m_parsingVariableSymbolTypeFlag == STF_DATAMEMBER) && asymptr->isDataMember())
+      {
+	asymptr= NULL; //t41698
       }
 
     //o.w. make a variable; symbol could be Null! a constant/array, or a model parameter!
@@ -7043,6 +7064,12 @@ Node * Parser::wrapFactor(Node * leftNode)
 	else
 	  nodetyperef->resetGivenUTI(auti);
       }
+  }
+
+  bool Parser::peekFirstToken(Token & firsttok)
+  {
+    bool rtnb = m_tokenizer->peekFirstToken(firsttok);
+    return rtnb;
   }
 
   bool Parser::getExpectedToken(TokenType eTokType)

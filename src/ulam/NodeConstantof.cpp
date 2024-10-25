@@ -30,9 +30,9 @@ namespace MFM {
     return 0u;
   }
 
-  bool NodeConstantof::isAConstant()
+  TBOOL NodeConstantof::isAConstant()
   {
-    return true;
+    return TBOOL_TRUE;
   }
 
   bool NodeConstantof::isAConstantClass()
@@ -43,7 +43,7 @@ namespace MFM {
   bool NodeConstantof::getConstantValue(BV8K& bval)
   {
     UTI nuti = getNodeType();
-    assert(m_state.okUTItoContinue(nuti));
+    NODE_ASSERT(m_state.okUTItoContinue(nuti));
     bool rtnok = m_state.getDefaultClassValue(nuti, bval);
     return rtnok;
   }
@@ -73,6 +73,11 @@ namespace MFM {
     return getNodeType();
   } //checkAndLabelType
 
+
+  TBOOL NodeConstantof::checkVarUsedBeforeDeclared(u32 id, NNO declblockno)
+  {
+    return TBOOL_FALSE; //ok moot (t41502)
+  }
 
   UlamValue NodeConstantof::makeUlamValuePtr()
   {
@@ -110,7 +115,7 @@ namespace MFM {
 	      getatomtypeuv.getUlamValueTypeIdx();
 	  }
 
-	assert(atomtype != Nouti); //sanity
+	NODE_ASSERT(atomtype != Nouti); //sanity
 	if(!m_state.isAtom(atomtype))
 	  {
 	    ULAMCLASSTYPE classtype = m_state.getUlamTypeByIndex(atomtype)->getUlamClassType();
@@ -131,7 +136,7 @@ namespace MFM {
       {
 	u64 dq = 0;
 	AssertBool isDefinedQuark = m_state.getDefaultQuark(auti, dq); //returns scalar dq
-	assert(isDefinedQuark);
+	NODE_ASSERT(isDefinedQuark);
 	atomuv = UlamValue::makeImmediateLongClass(auti, dq, aut->getTotalBitSize());
       }
     else if(aclasstype == UC_TRANSIENT)

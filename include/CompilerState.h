@@ -127,8 +127,10 @@ namespace MFM{
     u32 m_nextFunctionOrderNumber; //one per SymbolFunction per class in order of declaration
 
     UTI m_parsingThisClass;
+    Token m_firstTokenForParsing;
     bool m_parsingConcreteClassFlag;
     SYMBOLTYPEFLAG m_parsingVariableSymbolTypeFlag;
+    bool m_initSubtreeSymbolsWithConstantsOnly; //DM and Constant Defs init w constants only
 
     // used for break/continue stmt parsing; label num for end of loop, or 0
     ParsingLoopsSwitchStack m_parsingControlLoopsSwitchStack;
@@ -486,6 +488,7 @@ namespace MFM{
     std::string getDataAsStringMangled(u32 dataindex);
     const std::string getTokenAsATypeName(const Token& tok);
     u32 getTokenAsATypeNameId(const Token& tok);
+    bool isPossibleTypeName(u32 id);
 
     bool checkFunctionReturnNodeTypes(SymbolFunction * fsym);
     void indentUlamCode(File * fp);
@@ -501,7 +504,7 @@ namespace MFM{
 
     const char * getIsMangledFunctionName(UTI ltype);
     const char * getAsMangledFunctionName(UTI ltype, UTI rtype);
-    const char * getGetRelPosMangledFunctionName(UTI ltype);
+    const char * getGetRelPosMangledFunctionName(UTI ltype, bool doChk=true);
     const char * getDataMemberInfoFunctionName(UTI ltype);
     const char * getDataMemberCountFunctionName(UTI ltype);
     const char * getNumberOfBasesFunctionName(UTI ltype);
@@ -639,12 +642,18 @@ namespace MFM{
     void clearThisClassForParsing();
     UTI getThisClassForParsing();
 
+    /** helpers: first token of an ulam file, used for locator for localdef load */
+    void saveFirstTokenForParsing(Token fTok);
+    void getFirstTokenForParsing(Token& fTok);
+    void clearFirstTokenForParsing();
+
     /** helpers: parsing a concrete class which should have no pure virtuals; checked even if uninstaniated */
     void setConcreteClassFlagForParsing();
     void clearConcreteClassFlagForParsing();
     bool getConcreteClassFlagForParsing();
 
     /** helpers: local def location and flag for parsing*/
+    void setLocalsScopeForParsing();
     void setLocalsScopeForParsing(const Token& localTok);
     void clearLocalsScopeForParsing();
     bool isParsingLocalDef();
@@ -705,6 +714,8 @@ namespace MFM{
     bool useMemberBlock();
 
     NodeBlockClass * getCurrentMemberClassBlock();
+
+    NNO getCurrentMemberClassBlockNo();
 
     NodeBlock * getCurrentBlockForSearching();
 

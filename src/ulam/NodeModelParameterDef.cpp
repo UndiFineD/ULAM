@@ -78,7 +78,10 @@ namespace MFM {
 
   void NodeModelParameterDef::checkForSymbol()
   {
-    assert(!m_constSymbol);
+    NODE_ASSERT(!m_constSymbol);
+
+    bool savCnstInitFlag = m_state.m_initSubtreeSymbolsWithConstantsOnly; //t3455
+    m_state.m_initSubtreeSymbolsWithConstantsOnly = false;
 
     //in case of a cloned unknown
     NodeBlock * currBlock = getBlock();
@@ -105,12 +108,17 @@ namespace MFM {
       {
 	std::ostringstream msg;
 	msg << "(2) Model Parameter '" << m_state.m_pool.getDataAsString(m_cid).c_str();
-	msg << "' is not defined, and cannot be used";
+	if(savCnstInitFlag)
+	  msg << "' is not a constant, and cannot be used in this context"; //t3455,t3219
+	else
+	  msg << "' is not defined, and cannot be used";
 	if(!hazyKin)
 	  MSG(getNodeLocationAsString().c_str(), msg.str().c_str(), ERR);
 	else
 	  MSG(getNodeLocationAsString().c_str(), msg.str().c_str(), WAIT); //was debug
       }
+
+    m_state.m_initSubtreeSymbolsWithConstantsOnly = savCnstInitFlag; //restore
     m_state.popClassContext(); //restore
   } //checkForSymbol
 
@@ -128,14 +136,14 @@ namespace MFM {
     if(!m_state.isComplete(uti)) //not complete includes Hzy
       return Hzy; //e.g. not a constant; total word size (below) requires completeness
 
-    assert(m_constSymbol);
+    NODE_ASSERT(m_constSymbol);
     if(isReadyConstant())
       return uti;
 
-    assert(!m_state.isConstantRefType(uti));
-    assert(m_state.isScalar(uti));
-    assert(m_nodeExpr);
-    assert(!m_state.isAClass(uti));
+    NODE_ASSERT(!m_state.isConstantRefType(uti));
+    NODE_ASSERT(m_state.isScalar(uti));
+    NODE_ASSERT(m_nodeExpr);
+    NODE_ASSERT(!m_state.isAClass(uti));
 
     // MP must be a primitive constant..
     u64 newconst = 0; //UlamType format (not sign extended)
@@ -234,7 +242,7 @@ namespace MFM {
 
   void NodeModelParameterDef::genCode(File * fp, UVPass& uvpass)
   {
-    assert(m_constSymbol->isModelParameter());
+    NODE_ASSERT(m_constSymbol->isModelParameter());
 
     UTI vuti = m_constSymbol->getUlamTypeIdx();
     UlamType * vut = m_state.getUlamTypeByIndex(vuti);
@@ -251,11 +259,11 @@ namespace MFM {
 
   void NodeModelParameterDef::addMemberDescriptionToInfoMap(UTI classType, ClassMemberMap& classmembers)
   {
-    assert(m_constSymbol);
-    assert(m_constSymbol->isReady());
+    NODE_ASSERT(m_constSymbol);
+    NODE_ASSERT(m_constSymbol->isReady());
 
     ParameterDesc * descptr = new ParameterDesc((SymbolModelParameterValue *) m_constSymbol, classType, m_state);
-    assert(descptr);
+    NODE_ASSERT(descptr);
 
     //replace m_memberName with Ulam Type and Name
     std::ostringstream mnstr;

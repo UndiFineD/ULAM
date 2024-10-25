@@ -9,7 +9,7 @@ namespace MFM {
 
   NodeInitDM::NodeInitDM(u32 dmid, Node * assignNode, UTI ofclass, CompilerState & state) : NodeConstantDef(NULL, NULL, state), m_posOfDM(UNRELIABLEPOS)
   {
-    assert(assignNode);
+    NODE_ASSERT(assignNode);
     setConstantExpr(assignNode);
     m_cid = dmid;
     m_ofClassUTI = ofclass;
@@ -71,7 +71,7 @@ namespace MFM {
 
   void NodeInitDM::resetOfClassType(UTI cuti)
   {
-    assert(m_state.okUTItoContinue(cuti)); //maybe not complete (t41169)
+    NODE_ASSERT(m_state.okUTItoContinue(cuti)); //maybe not complete (t41169)
     m_ofClassUTI = cuti;
   }
 
@@ -180,7 +180,7 @@ namespace MFM {
 	    return Hzy; //short-circuit
 	  }
 
-	assert(it != Nouti); //?
+	NODE_ASSERT(it != Nouti); //?
 
 	//note: Void is flag that it's a list of constant initializers;
 	// code lifted from NodeVarDecl.cpp c&l.
@@ -202,7 +202,7 @@ namespace MFM {
 	      {
 		//arraysize specified, may have fewer initializers
 		s32 arraysize = m_state.getArraySize(suti);
-		assert(arraysize >= 0); //t3847
+		NODE_ASSERT(arraysize >= 0); //t3847
 		u32 n = ((NodeList *) m_nodeExpr)->getNumberOfNodes();
 		if((n > (u32) arraysize) && (arraysize > 0)) //not an error: t3847
 		  {
@@ -227,7 +227,7 @@ namespace MFM {
 	      }
 	    else
 	      {
-		assert(suti != Nav);
+		NODE_ASSERT(suti != Nav);
 		it = Hzy; //flag
 	      }
 
@@ -249,17 +249,31 @@ namespace MFM {
 		  }
 	      }
 	  } //end array initializers (eit == Void)
+      }
 
-	if(m_nodeExpr && !m_nodeExpr->isAConstant())
+    if(m_nodeExpr)
+      {
+	TBOOL iscnstexpr = m_nodeExpr->isAConstant();
+	if(iscnstexpr != TBOOL_TRUE)
 	  {
+	    UTI neuti = Nav;
 	    std::ostringstream msg;
 	    msg << "Initialization value expression for";
 	    msg << " class data member: ";
 	    msg << m_state.m_pool.getDataAsString(m_cid).c_str();
 	    msg << ", is not a constant";
-	    MSG(getNodeLocationAsString().c_str(), msg.str().c_str(), ERR);
-	    setNodeType(Nav);
-	    return Nav; //short-circuit (error) after a possible empty array init is deleted t41206
+	    if(iscnstexpr == TBOOL_HAZY)
+	      {
+		MSG(getNodeLocationAsString().c_str(), msg.str().c_str(), WAIT);
+		neuti = Hzy;
+		m_state.setGoAgain();
+	      }
+	    else
+	      {
+		MSG(getNodeLocationAsString().c_str(), msg.str().c_str(), ERR);
+	      }
+	    setNodeType(neuti);
+	    return neuti; //short-circuit (error,hzy) after a possible empty array init is deleted t41206
 	  }
 
 	if(m_state.okUTItoContinue(it) && m_state.okUTItoContinue(suti) && (m_state.isScalar(it) ^ m_state.isScalar(suti)))
@@ -337,10 +351,17 @@ namespace MFM {
 
   void NodeInitDM::checkForSymbol()
   {
-    assert(!m_constSymbol);
+    NODE_ASSERT(!m_constSymbol);
+
+    //we are looking for DM names..
+    bool savCnstInitFlag = m_state.m_initSubtreeSymbolsWithConstantsOnly; //t41633
+    m_state.m_initSubtreeSymbolsWithConstantsOnly = false;
 
     if(!m_state.okUTItoContinue(m_ofClassUTI))
-      return; //can't find DM without class UTI, wait
+      {
+	m_state.m_initSubtreeSymbolsWithConstantsOnly = savCnstInitFlag; //restore
+	return; //can't find DM without class UTI, wait
+      }
 
     if(m_state.isAnonymousClass(m_ofClassUTI))
       {
@@ -348,6 +369,7 @@ namespace MFM {
 	msg << "Invalid Anonymous Class Type: ";
 	msg << m_state.getUlamTypeNameBriefByIndex(m_ofClassUTI).c_str();
 	MSG(getNodeLocationAsString().c_str(), msg.str().c_str(), ERR);
+	m_state.m_initSubtreeSymbolsWithConstantsOnly = savCnstInitFlag; //restore
 	return;
       }
 
@@ -357,6 +379,7 @@ namespace MFM {
 	msg << "Invalid UNSEEN Class Type: ";
 	msg << m_state.getUlamTypeNameBriefByIndex(m_ofClassUTI).c_str();
 	MSG(getNodeLocationAsString().c_str(), msg.str().c_str(), ERR);
+	m_state.m_initSubtreeSymbolsWithConstantsOnly = savCnstInitFlag; //restore
 	return;
       }
 
@@ -364,13 +387,13 @@ namespace MFM {
     bool hazyKin = false;
     if(m_state.alreadyDefinedSymbolByAClassOrAncestor(m_ofClassUTI, m_cid, asymptr, hazyKin)) //(e.g. t41182)
       {
-	assert(asymptr);
+	NODE_ASSERT(asymptr);
 	UTI auti = asymptr->getUlamTypeIdx();
 	Token cTok(TOK_IDENTIFIER, getNodeLocation(), m_cid);
 	m_constSymbol = new SymbolConstantValue(cTok, auti, m_state); //t41232
-	assert(m_constSymbol);
+	NODE_ASSERT(m_constSymbol);
 	m_constSymbol->setHasInitValue();
-	//assert(!hazyKin); //t41184. t3451
+	//NODE_ASSERT(!hazyKin); //t41184. t3451
       }
     else
       {
@@ -383,6 +406,8 @@ namespace MFM {
 	else
 	  MSG(getNodeLocationAsString().c_str(), msg.str().c_str(), WAIT); //was debug
       }
+
+    m_state.m_initSubtreeSymbolsWithConstantsOnly = savCnstInitFlag; //restore
   } //checkForSymbols
 
   UTI NodeInitDM::foldConstantExpression()
@@ -395,7 +420,7 @@ namespace MFM {
     if(!m_state.isComplete(uti)) //not complete includes Hzy
       return Hzy; //e.g. not a constant; total word size (below) requires completeness
 
-    assert(m_constSymbol);
+    NODE_ASSERT(m_constSymbol);
     if(m_constSymbol->isInitValueReady())
       return uti;
 
@@ -414,7 +439,7 @@ namespace MFM {
 
     //scalar classes wait until after c&l to build default value;
     //but pieces can be folded in advance
-    assert(m_nodeExpr);
+    NODE_ASSERT(m_nodeExpr);
     if(m_nodeExpr->isClassInit())
       return ((NodeListClassInit *) m_nodeExpr)->foldConstantExpression();
     return m_nodeExpr->getNodeType(); //could be a name constant class! (t41232)
@@ -430,13 +455,19 @@ namespace MFM {
   {
     bool rtnok = false;
 
-    assert(m_constSymbol);
+    NODE_ASSERT(m_constSymbol);
+
+    //we are looking for DM names..
+    bool savCnstInitFlag = m_state.m_initSubtreeSymbolsWithConstantsOnly; //t41633
+    m_state.m_initSubtreeSymbolsWithConstantsOnly = false;
 
     //need updated POS for genCode after c&l
     Symbol * symptr = NULL;
     bool hazyKin = false;
     AssertBool gotIt = m_state.alreadyDefinedSymbolByAClassOrAncestor(m_ofClassUTI, m_cid, symptr, hazyKin);
-    assert(gotIt);
+    NODE_ASSERT(gotIt);
+
+    m_state.m_initSubtreeSymbolsWithConstantsOnly = savCnstInitFlag; //restore
 
     if(!symptr->isPosOffsetReliable())
       return false;
@@ -455,7 +486,7 @@ namespace MFM {
       pos += ATOMFIRSTSTATEBITPOS; //t41230
 
     UTI nuti = m_constSymbol->getUlamTypeIdx();
-    assert(UlamType::compare(nuti, getNodeType(), m_state) == UTIC_SAME);
+    NODE_ASSERT(UlamType::compare(nuti, getNodeType(), m_state) == UTIC_SAME);
 
     UlamType * nut = m_state.getUlamTypeByIndex(nuti);
     u32 len = nut->getSizeofUlamType(); //t41168, t41232
@@ -511,21 +542,21 @@ namespace MFM {
       {
 	u32 value = 0;
 	AssertBool gotVal = m_constSymbol->getInitValue(value);
-	assert(gotVal);
+	NODE_ASSERT(gotVal);
 	bvref.Write(pos, len, value);
       }
     else if(len <= MAXBITSPERLONG)
       {
 	u64 value = 0;
 	AssertBool gotVal = m_constSymbol->getInitValue(value);
-	assert(gotVal);
+	NODE_ASSERT(gotVal);
 	bvref.WriteLong(pos, len, value);
       }
     else
       {
 	BV8K val8k;
 	AssertBool gotVal = m_constSymbol->getInitValue(val8k);
-	assert(gotVal);
+	NODE_ASSERT(gotVal);
 	val8k.CopyBV(0, pos, len, bvref);
       }
 
@@ -540,7 +571,7 @@ namespace MFM {
 
   EvalStatus NodeInitDM::eval()
   {
-    assert(m_constSymbol);
+    NODE_ASSERT(m_constSymbol);
     if(m_constSymbol->isInitValueReady())
       return NORMAL;
     return evalErrorReturn();
@@ -554,7 +585,7 @@ namespace MFM {
 
   void NodeInitDM::printUnresolvedVariableDataMembers()
   {
-    assert(m_constSymbol);
+    NODE_ASSERT(m_constSymbol);
     UTI it = m_constSymbol->getUlamTypeIdx();
     if(!m_state.isComplete(it))
       {
@@ -569,7 +600,7 @@ namespace MFM {
 
   void NodeInitDM::printUnresolvedLocalVariables(u32 fid)
   {
-    assert(m_constSymbol);
+    NODE_ASSERT(m_constSymbol);
     UTI it = m_constSymbol->getUlamTypeIdx();
     if(!m_state.isComplete(it))
       {
@@ -584,25 +615,32 @@ namespace MFM {
       } //not complete
   } //printUnresolvedLocalVariables
 
-  bool NodeInitDM::isAConstant()
+  TBOOL NodeInitDM::isAConstant()
   {
     if(m_nodeExpr)
       return m_nodeExpr->isAConstant(); //t41169 (not m_constSymbol check)
-    return true; //i.e. array without initial values
+    return TBOOL_TRUE; //i.e. array without initial values
+  }
+
+  TBOOL NodeInitDM::checkVarUsedBeforeDeclared(u32 id, NNO declblockno)
+  {
+    if(m_nodeExpr)
+      return m_nodeExpr->checkVarUsedBeforeDeclared(id, declblockno); //t41684
+    return TBOOL_FALSE; //ok moot (t41180)
   }
 
   void NodeInitDM::genCode(File * fp, UVPass& uvpass)
   {
     UTI nuti = getNodeType();
-    assert(m_constSymbol);
-    assert(m_state.isComplete(nuti));
-    assert(UlamType::compare(m_constSymbol->getUlamTypeIdx(), nuti, m_state) == UTIC_SAME); //sanity check
+    NODE_ASSERT(m_constSymbol);
+    NODE_ASSERT(m_state.isComplete(nuti));
+    NODE_ASSERT(UlamType::compare(m_constSymbol->getUlamTypeIdx(), nuti, m_state) == UTIC_SAME); //sanity check
     UlamType * nut = m_state.getUlamTypeByIndex(nuti);
 
     if(!nut->isScalar() && m_nodeExpr==NULL)
       return; //t41206 no change to array init values
 
-    assert(m_nodeExpr);
+    NODE_ASSERT(m_nodeExpr);
 
     ULAMTYPE etyp = nut->getUlamTypeEnum();
     u32 len = nut->getTotalBitSize();
@@ -611,7 +649,7 @@ namespace MFM {
 
     const bool useLocalVar = (uvpass.getPassVarNum() == 0); //use variable name on stack t41171
     u32 cosSize = m_state.m_currentObjSymbolsForCodeGen.size();
-    assert(!useLocalVar || cosSize==1);
+    NODE_ASSERT(!useLocalVar || cosSize==1);
 
     if(cosSize > 0)
       {
@@ -619,13 +657,13 @@ namespace MFM {
 	Symbol * asymptr = NULL;
 	bool hazyKin = false;
 	AssertBool isDef = m_state.alreadyDefinedSymbolByAClassOrAncestor(m_ofClassUTI, m_cid, asymptr, hazyKin);
-	assert(isDef);
+	NODE_ASSERT(isDef);
 	pos = asymptr->getPosOffset();
 	m_posOfDM = pos; //no adjust for elements here (t41230, t41184)
       }
     else
       {
-	assert(m_posOfDM != UNRELIABLEPOS); //reliable (t41185)
+	NODE_ASSERT(m_posOfDM != UNRELIABLEPOS); //reliable (t41185)
 	pos = m_posOfDM;
       }
 
@@ -636,10 +674,10 @@ namespace MFM {
       {
 	//avoid when empty since no "self" defined within initialization scope. t41170
 	rtnstgidx = loadStorageAndCurrentObjectSymbols(stgcos, cos);
-	assert(stgcos && cos);
-	assert(cosSize == m_state.m_currentObjSymbolsForCodeGen.size()); //??
+	NODE_ASSERT(stgcos && cos);
+	NODE_ASSERT(cosSize == m_state.m_currentObjSymbolsForCodeGen.size()); //??
       }
-    assert(rtnstgidx <= 0 || useLocalVar);
+    NODE_ASSERT(rtnstgidx <= 0 || useLocalVar);
 
     //when writing into an element, compensate for ATOMFIRSTSTATEBITS
     bool isVarElement = false;
@@ -703,7 +741,7 @@ namespace MFM {
 
 	UVPass uvpass2 = UVPass::makePass(tmpVarNum2, TMPBITVAL, nuti, m_state.determinePackable(nuti), m_state, 0, 0); //default class data member as immediate
 
-	assert(m_nodeExpr);
+	NODE_ASSERT(m_nodeExpr);
 	if(nut->isScalar())
 	  {
 	    m_nodeExpr->genCode(fp, uvpass2);  //updates initialized values before read (t41167)
@@ -748,7 +786,7 @@ namespace MFM {
       {
 	//scalar, constant terminal, non-class primitive (32 or 64 bits), including String and arrays
 	UVPass uvpass3;
-	assert(m_nodeExpr); //t41206
+	NODE_ASSERT(m_nodeExpr); //t41206
 	m_nodeExpr->genCode(fp, uvpass3);
 
 	m_state.indentUlamCode(fp);
@@ -787,8 +825,8 @@ namespace MFM {
   {
     //include scalars for generated comments; arrays for constructor initialization
     NodeInitDM * cloneofme = (NodeInitDM *) this->instantiate();
-    assert(cloneofme);
-    assert(m_constSymbol);
+    NODE_ASSERT(cloneofme);
+    NODE_ASSERT(m_constSymbol);
     ((NodeInitDM *) cloneofme)->setSymbolPtr(m_constSymbol); //another ptr to same symbol
     cloneVec.push_back(cloneofme);
   }

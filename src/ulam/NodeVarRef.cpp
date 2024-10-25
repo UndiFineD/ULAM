@@ -88,7 +88,7 @@ namespace MFM {
 
   FORECAST NodeVarRef::safeToCastTo(UTI newType)
   {
-    assert(m_nodeInitExpr);
+    NODE_ASSERT(m_nodeInitExpr);
     UTI nuti = getNodeType();
 
     //cast RHS if necessary and safe
@@ -155,13 +155,25 @@ namespace MFM {
 		else
 		  MSG(getNodeLocationAsString().c_str(), msg.str().c_str(), ERR);
 	      }
-	    else if(m_nodeInitExpr->isAConstant() && !m_state.isConstantRefType(nuti))
+	    else
 	      {
-		std::ostringstream msg;
-		msg << "Initial value of non-constant reference variable: " << getName();
-		msg << " is constant";
-		MSG(getNodeLocationAsString().c_str(), msg.str().c_str(), ERR); //error/t41255
-		rscr = CAST_BAD;
+		TBOOL iscnstinitexpr = m_nodeInitExpr->isAConstant();
+		if((iscnstinitexpr != TBOOL_FALSE) && !m_state.isConstantRefType(nuti))
+		  {
+		    std::ostringstream msg;
+		    msg << "Initial value of non-constant reference variable: " << getName();
+		    msg << " is constant";
+		    if(iscnstinitexpr == TBOOL_HAZY)
+		      {
+			MSG(getNodeLocationAsString().c_str(), msg.str().c_str(), WAIT);
+			rscr = CAST_HAZY;
+		      }
+		    else
+		      {
+			MSG(getNodeLocationAsString().c_str(), msg.str().c_str(), ERR); //error/t41255
+			rscr = CAST_BAD;
+		      }
+		  }
 	      }
 	  }
       }
@@ -171,7 +183,7 @@ namespace MFM {
 
   bool NodeVarRef::checkReferenceCompatibility(UTI uti, Node * parentnode)
   {
-    assert(m_state.okUTItoContinue(uti));
+    NODE_ASSERT(m_state.okUTItoContinue(uti));
     if((!m_state.getUlamTypeByIndex(uti)->isAltRefType()))
       {
 	std::ostringstream msg;
@@ -198,7 +210,7 @@ namespace MFM {
 	else if(m_state.isHolder(it))
 	  hazyCount++;
 	//else
-	assert(it != Nouti);
+	NODE_ASSERT(it != Nouti);
       }
     ////requires non-constant, non-funccall value
     //NOASSIGN REQUIRED (e.g. for function parameters) doesn't have to have this!
@@ -330,15 +342,15 @@ namespace MFM {
 
   EvalStatus NodeVarRef::eval()
   {
-    assert(m_varSymbol);
+    NODE_ASSERT(m_varSymbol);
 
-    assert(m_varSymbol->getAutoLocalType() != ALT_AS); //NodeVarRefAuto
+    NODE_ASSERT(m_varSymbol->getAutoLocalType() != ALT_AS); //NodeVarRefAuto
 
     UTI nuti = getNodeType();
     if(nuti == Nav) return evalErrorReturn();
 
-    assert(m_varSymbol->getUlamTypeIdx() == nuti);
-    assert(m_nodeInitExpr);
+    NODE_ASSERT(m_varSymbol->getUlamTypeIdx() == nuti);
+    NODE_ASSERT(m_nodeInitExpr);
 
     evalNodeProlog(0); //new current frame pointer
 
@@ -348,7 +360,7 @@ namespace MFM {
     if(evs != NORMAL) return evalStatusReturn(evs);
 
     UlamValue pluv = m_state.m_nodeEvalStack.popArg();
-    assert(m_state.isPtr(pluv.getUlamValueTypeIdx()));
+    NODE_ASSERT(m_state.isPtr(pluv.getUlamValueTypeIdx()));
 
     UTI autostgtype = m_state.m_currentAutoStorageType; //if not Nouti, pre-cast type to sub
     if(m_state.okUTItoContinue(autostgtype))
@@ -407,8 +419,8 @@ namespace MFM {
   void NodeVarRef::genCode(File * fp, UVPass & uvpass)
   {
     //reference always has initial value, unless func param
-    assert(m_varSymbol->isAutoLocal());
-    assert(m_varSymbol->getAutoLocalType() != ALT_AS);
+    NODE_ASSERT(m_varSymbol->isAutoLocal());
+    NODE_ASSERT(m_varSymbol->getAutoLocalType() != ALT_AS);
 
     UVPass uvpass2clear;
     uvpass = uvpass2clear; //refresh (t3804);

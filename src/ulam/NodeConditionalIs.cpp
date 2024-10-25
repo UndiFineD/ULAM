@@ -15,9 +15,25 @@ namespace MFM {
     return new NodeConditionalIs(*this);
   }
 
+    const char * NodeConditionalIs::getName()
+  {
+    return "is";
+  }
+
+  const std::string NodeConditionalIs::prettyNodeName()
+  {
+    return nodeName(__PRETTY_FUNCTION__);
+  }
+
+  const std::string NodeConditionalIs::methodNameForCodeGen()
+  {
+    NODE_ASSERT(m_nodeLeft);
+    return  std::string(m_state.getIsMangledFunctionName(m_nodeLeft->getNodeType()));
+  }
+
   UTI NodeConditionalIs::checkAndLabelType(Node * thisparentnode)
   {
-    assert(m_nodeLeft);
+    NODE_ASSERT(m_nodeLeft);
     UTI newType = Bool;  //except for 'Has'
 
     UTI luti = m_nodeLeft->checkAndLabelType(this);  //side-effect
@@ -86,7 +102,7 @@ namespace MFM {
 	  }
       }
 
-    assert(m_nodeTypeDesc);
+    NODE_ASSERT(m_nodeTypeDesc);
     UTI ruti = m_nodeTypeDesc->checkAndLabelType(this);
     if(m_state.okUTItoContinue(ruti))
       {
@@ -152,25 +168,15 @@ namespace MFM {
     return getNodeType();
   } //checkAndLabelType
 
-  const char * NodeConditionalIs::getName()
+  TBOOL NodeConditionalIs::checkVarUsedBeforeDeclared(u32 id, NNO declblockno)
   {
-    return "is";
-  }
-
-  const std::string NodeConditionalIs::prettyNodeName()
-  {
-    return nodeName(__PRETTY_FUNCTION__);
-  }
-
-  const std::string NodeConditionalIs::methodNameForCodeGen()
-  {
-    assert(m_nodeLeft);
-    return  std::string(m_state.getIsMangledFunctionName(m_nodeLeft->getNodeType()));
+    // right node is a Type.
+    return m_nodeLeft->checkVarUsedBeforeDeclared(id, declblockno); //t41067
   }
 
   EvalStatus  NodeConditionalIs::eval()
   {
-    assert(m_nodeLeft);
+    NODE_ASSERT(m_nodeLeft);
 
     UTI nuti = getNodeType();
     if(nuti == Nav) return evalErrorReturn();
@@ -187,7 +193,7 @@ namespace MFM {
 
     // DO 'IS':
     UTI luti = pluv.getUlamValueTypeIdx();
-    assert(m_state.isPtr(luti));
+    NODE_ASSERT(m_state.isPtr(luti));
     UTI lttype = pluv.getPtrTargetType();
     UTI leffself = pluv.getPtrTargetEffSelfType(); //might be Nouti (e.g. Atom) t3255
 
@@ -241,7 +247,7 @@ namespace MFM {
 
   void NodeConditionalIs::genCode(File * fp, UVPass& uvpass)
   {
-    assert(m_nodeLeft);
+    NODE_ASSERT(m_nodeLeft);
     UTI lnuti = m_nodeLeft->getNodeType();
     if(m_state.isAtom(lnuti))
       return genCodeAtomIs(fp, uvpass); //reads into tmpvar
@@ -258,7 +264,7 @@ namespace MFM {
 
     UTI ruti = getRightType();
     UlamType * rut = m_state.getUlamTypeByIndex(ruti);
-    assert(!rut->isAltRefType());
+    NODE_ASSERT(!rut->isAltRefType());
 
     s32 tmpVarIs = m_state.getNextTmpVarNumber();
 
@@ -288,7 +294,7 @@ namespace MFM {
 
   void NodeConditionalIs::genCodeAtomIs(File * fp, UVPass & uvpass)
   {
-    assert(m_nodeLeft);
+    NODE_ASSERT(m_nodeLeft);
     UTI nuti = getNodeType();
     UlamType * nut = m_state.getUlamTypeByIndex(nuti);
 
@@ -296,11 +302,11 @@ namespace MFM {
     m_nodeLeft->genCode(fp, luvpass); //loads lhs into tmp (T)
 
     UTI luti = luvpass.getPassTargetType();
-    assert(m_state.isAtom(luti)); //or Atomref
+    NODE_ASSERT(m_state.isAtom(luti)); //or Atomref
 
     UTI ruti = getRightType();
     UlamType * rut = m_state.getUlamTypeByIndex(ruti);
-    assert(!rut->isAltRefType());
+    NODE_ASSERT(!rut->isAltRefType());
 
     s32 tmpVarIs = m_state.getNextTmpVarNumber();
 
@@ -347,14 +353,14 @@ namespace MFM {
 
   void NodeConditionalIs::genCodeReferenceIs(File * fp, UVPass & uvpass)
   {
-    assert(m_nodeLeft);
+    NODE_ASSERT(m_nodeLeft);
     UTI nuti = getNodeType();
     UlamType * nut = m_state.getUlamTypeByIndex(nuti);
 
     UVPass luvpass;
     m_nodeLeft->genCodeToStoreInto(fp, luvpass); //loads lhs into tmp (T)
     UTI luti = luvpass.getPassTargetType(); //replace
-    assert(m_state.isReference(luti)); //t41538
+    NODE_ASSERT(m_state.isReference(luti)); //t41538
 
     Symbol * stgcos = NULL;
     if(m_state.m_currentObjSymbolsForCodeGen.empty())
@@ -364,7 +370,7 @@ namespace MFM {
 
     UTI ruti = getRightType();
     UlamType * rut = m_state.getUlamTypeByIndex(ruti);
-    assert(!rut->isAltRefType());
+    NODE_ASSERT(!rut->isAltRefType());
 
     s32 tmpVarIs = m_state.getNextTmpVarNumber();
 

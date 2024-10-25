@@ -76,7 +76,7 @@ namespace MFM{
 
     virtual bool isReadyConstant();
 
-    virtual bool isAConstant();
+    virtual TBOOL isAConstant();
 
     virtual bool isAConstantClassArray();
 
@@ -85,6 +85,8 @@ namespace MFM{
     virtual UTI checkAndLabelType(Node * thisparentnode);
 
     virtual bool getConstantValue(BV8K& bval);
+
+    virtual TBOOL checkVarUsedBeforeDeclared(u32 id, NNO declblockno);
 
     virtual EvalStatus eval();
 

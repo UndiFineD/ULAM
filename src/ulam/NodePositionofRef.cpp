@@ -84,9 +84,9 @@ namespace MFM {
     return nodeName(__PRETTY_FUNCTION__);
   }
 
-  bool NodePositionofRef::isAConstant()
+  TBOOL NodePositionofRef::isAConstant()
   {
-    return false;
+    return TBOOL_FALSE;
   }
 
   FORECAST NodePositionofRef::safeToCastTo(UTI newType)
@@ -147,6 +147,11 @@ namespace MFM {
     return getNodeType(); //updated to Unsigned, hopefully
   } //checkandLabelType
 
+  TBOOL NodePositionofRef::checkVarUsedBeforeDeclared(u32 id, NNO declblockno)
+  {
+    return TBOOL_FALSE; //ok (t41616)
+  }
+
   void NodePositionofRef::countNavHzyNoutiNodes(u32& ncnt, u32& hcnt, u32& nocnt)
   {
     Node::countNavHzyNoutiNodes(ncnt, hcnt, nocnt);
@@ -165,7 +170,7 @@ namespace MFM {
 
   void NodePositionofRef::genCode(File * fp, UVPass& uvpass)
   {
-    assert(m_nodeOf);
+    NODE_ASSERT(m_nodeOf);
     UTI nuti = getNodeType();
     UVPass ofpass;
     m_nodeOf->genCodeToStoreInto(fp, ofpass);
@@ -173,14 +178,14 @@ namespace MFM {
     Symbol * cos = NULL;
     Symbol * stgcos = NULL;
     loadStorageAndCurrentObjectSymbols(stgcos, cos);
-    assert(cos && stgcos);
+    NODE_ASSERT(cos && stgcos);
     u32 cosSize = m_state.m_currentObjSymbolsForCodeGen.size();
-    assert(cosSize > 0);
+    NODE_ASSERT(cosSize > 0);
 
     UTI stgcosuti = stgcos->getUlamTypeIdx();
     UlamType * stgcosut = m_state.getUlamTypeByIndex(stgcosuti);
 
-    assert(stgcosut->isReference()); //non-refs handled in NodeTerminalProxy
+    NODE_ASSERT(stgcosut->isReference()); //non-refs handled in NodeTerminalProxy
 
 
     s32 tmpVarNum = m_state.getNextTmpVarNumber();

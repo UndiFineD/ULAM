@@ -40,13 +40,19 @@ namespace MFM {
   {
     //dup of NodeBlockLocals for now
     UTI savnuti = getNodeType();
-    assert(savnuti != Nouti);
+    NODE_ASSERT(savnuti != Nouti);
 
     //possibly empty
     if(m_nodeNext)
         m_nodeNext->checkAndLabelType(this);
     setNodeType(savnuti);
     return savnuti;
+  }
+
+  TBOOL NodeBlockContext::checkVarUsedBeforeDeclared(u32 id, NNO declblockno)
+  {
+    m_state.abortNeedsATest();
+    return TBOOL_FALSE; //ok moot
   }
 
   u32 NodeBlockContext::getAllRemainingCulamGeneratedTypedefSymbolsInContext(std::map<u32, Symbol*>& mapref)
@@ -109,7 +115,7 @@ namespace MFM {
 	UlamKeyTypeSignature key = *it;
 	UlamType * ut = NULL;
 	AssertBool isDef = m_state.isDefined(key, ut);
-	assert(isDef);
+	NODE_ASSERT(isDef);
 	if(ut->getUlamTypeEnum() == Class)
 	  {
 	    u32 cuti = key.getUlamKeyTypeSignatureClassInstanceIdx();
@@ -137,7 +143,7 @@ namespace MFM {
 	UlamKeyTypeSignature key = *it;
 	UlamType * ut = NULL;
 	AssertBool isDef = m_state.isDefined(key, ut);
-	assert(isDef);
+	NODE_ASSERT(isDef);
 	//e.g. skip constants, include atom, references done automatically
 	if(ut->needsImmediateType() && (ut->getUlamClassType() == UC_NOTACLASS))
 	  {
@@ -154,7 +160,7 @@ namespace MFM {
 	UlamKeyTypeSignature key = *it;
 	UlamType * ut = NULL;
 	AssertBool isDef = m_state.isDefined(key, ut);
-	assert(isDef);
+	NODE_ASSERT(isDef);
 	if(ut->needsImmediateType() && (ut->getUlamClassType() != UC_NOTACLASS))
 	  {
 	    ut->genUlamTypeMangledAutoDefinitionForC(fp); //references
