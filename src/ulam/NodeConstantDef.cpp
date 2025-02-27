@@ -18,8 +18,13 @@ namespace MFM {
 	// (e.g. pending class args)
 	m_cid = symptr->getId();
 	symptr->setDeclNodeNo(getNodeNo());
+#if 0
 	// ish 20230116 symptr was a holder, and aliased to nodetype's given UTI (no longer).
+	if(nodetype && ((nodetype->givenUTI() == Nouti) || (state.isStillNouti(nodetype->givenUTI()))))
+	  nodetype->setGivenUTI(symptr->getUlamTypeIdx()); //t41713
+
 	NODE_ASSERT(!nodetype || nodetype->givenUTI() == symptr->getUlamTypeIdx()); //invariant?
+#endif
       }
   }
 
@@ -523,6 +528,8 @@ namespace MFM {
 		return Hzy; //short-circuit
 	      }
 	  }
+	else if (m_state.isStillNouti(nuti))
+	  m_state.abortNotImplementedYet();
 
 	//note: Void is flag that it's a list of constant initializers;
 	// code lifted from NodeVarDecl.cpp c&l.
@@ -765,7 +772,8 @@ namespace MFM {
 	    MSG(getNodeLocationAsString().c_str(), msg.str().c_str(), ERR);
 	    setNodeType(Nav);
 	  }
-	else if(m_state.isStillHazy(foldrtn))
+	//	else if(m_state.isStillHazy(foldrtn))
+	else if(m_state.isStillHazy(foldrtn) || m_state.isStillNouti(foldrtn))
 	  {
 	    std::ostringstream msg;
 	    msg << "Incomplete " << prettyNodeName().c_str() << " for type";

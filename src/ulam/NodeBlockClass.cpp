@@ -763,7 +763,7 @@ namespace MFM {
     while(i < basecount)
       {
 	UTI baseuti = csym->getBaseClass(i);
-	//skip the ancestor of a template
+	//skip the ancestor of a template; continue if still Nouti holder (t41522)
 	if(m_state.okUTItoContinue(baseuti))
 	  {
 	    if(m_state.isHolder(baseuti) || !m_state.isComplete(baseuti)) //t3874, t41010 (super)

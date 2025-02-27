@@ -131,11 +131,11 @@ namespace MFM{
   {
     //the size of the list may be less than the array size
     UTI rtnuti = Node::getNodeType(); //init to Void; //ok
-    if(m_state.isStillHazy(rtnuti))
+    if(m_state.isStillHazy(rtnuti) || m_state.isStillNouti(rtnuti))
       rtnuti = Void; //resets
 
     if(!m_state.okUTItoContinue(rtnuti))
-      return rtnuti; //short-circuit if Nav (or Nouti)
+      return rtnuti; //short-circuit if Nav (or Nouti/isStillNouti)
 
     for(u32 i = 0; i < m_nodes.size(); i++)
       {

@@ -128,7 +128,7 @@ namespace MFM {
 	      navArgs++;
 	    else if((argtype == Hzy) || m_state.isStillHazy(argtype))
 	      hzyArgs++;
-	    else if(argtype == Nouti)
+	    else if((argtype == Nouti) || m_state.isStillNouti(argtype))
 	      noutiArgs++;
 	    else //t3984,5
 	      // track constants and potential casting to be handled
@@ -180,7 +180,10 @@ namespace MFM {
 	    for(u32 i = 0; i < argNodes.size(); i++)
 	      {
 		UTI auti = argNodes[i]->getNodeType();
-		msg << m_state.getUlamTypeNameByIndex(auti).c_str() << ", ";
+		if(m_state.isAClass(auti))
+		  msg << m_state.getUlamTypeNameBriefByIndex(auti).c_str() << ", "; //t41704,t41237
+		else
+		  msg << m_state.getUlamTypeNameByIndex(auti).c_str() << ", ";
 	      }
 	    msg << "and cannot be called";
 	    if(hasHazyArgs)

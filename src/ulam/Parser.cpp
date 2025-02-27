@@ -119,9 +119,14 @@ namespace MFM {
     //  The 'use' class directive (ulam filenames only) now keeps its own loc from its first token
     //  for their localdefs by queing the file. (ulam-6)
     Token firstTok;
-    AssertBool firstpeek = peekFirstToken(firstTok); //t3872,t41130; error/t3893
-    assert(firstpeek);
-    m_state.saveFirstTokenForParsing(firstTok);
+    if(peekFirstToken(firstTok)) //t3872,t41130; error/t3893
+      m_state.saveFirstTokenForParsing(firstTok);
+    else
+      {
+	MSG(&firstTok, "ABORTED Compilation (first token problem); Fix the previous error found at this location", ERR);
+	m_state.clearFirstTokenForParsing();
+	return 1; //t41701
+      }
 
     //here's the start (first token)!!  preparser will handle the VERSION_DECL,
     //as well as USE and LOAD keywords.
@@ -191,7 +196,6 @@ namespace MFM {
       {
 	if(pTok.m_type == TOK_KW_LOCALDEF)
 	  {
-	    //m_state.setLocalsScopeForParsing(pTok);
 	    m_state.setLocalsScopeForParsing();
 	    parseLocalDef(); //returns bool
 	    m_state.clearLocalsScopeForParsing();
@@ -3050,7 +3054,7 @@ namespace MFM {
     UlamType * ctut = m_state.getUlamTypeByIndex(ctuti);
     bool unseenTemplate = (ctut->getUlamClassType() == UC_UNSEEN);
 
-    u32 numParams = ctsym->getNumberOfParameters();
+    u32 numParams = unseenTemplate ? 0 : ctsym->getNumberOfParameters(); //t41703 avoid assert
     u32 numParamDefaults = unseenTemplate ? 0 : ctsym->getTotalParametersWithDefaultValues();
 
     getNextToken(pTok);
@@ -3101,7 +3105,7 @@ namespace MFM {
 	msg << m_state.m_pool.getDataAsString(ctsym->getId()).c_str() ;
 	msg << ", additional errors are unlikely to be useful";
 	MSG(&typeargs.m_typeTok, msg.str().c_str(), ERR);
-	return Nav; //needs a test, was t41166
+	return Nav; //needs a test, was t41166, t41703
       }
 
     //note: class resolver cnstr initializes value/type contexts to: cuti/stubuti
@@ -7112,6 +7116,13 @@ Node * Parser::wrapFactor(Node * leftNode)
 	msg << m_state.getTokenDataAsString(tok).c_str();
 	MSG(&tok, msg.str().c_str(), ERR);
 	brtn = m_tokenizer->getNextToken(tok); //and yet, we go on..
+#if 0
+	if(tok.m_type == TOK_ERROR_LOWLEVEL)
+	  {
+	    brtn = false;
+	    exit(1); //20250111 ish
+	  }
+#endif
       }
     else if(tok.m_type == TOK_STRUCTURED_COMMENT)
       {
